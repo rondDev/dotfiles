@@ -1,0 +1,6 @@
+[submodule ".config/nvim"]
+	path = .config/nvim
+	url = git@github.com:rondDev/neovim
+[submodule ".local/bin"]
+	path = .local/bin
+	url = git@github.com:rondDev/bin

@@ -4,3 +4,6 @@
 [submodule ".local/bin"]
 	path = .local/bin
 	url = git@github.com:rondDev/bin
+[submodule ".config/nushell"]
+	path = .config/nushell
+	url = git@github.com:rondDev/nushell

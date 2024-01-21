@@ -1,0 +1,84 @@
+##### ghostty ####
+# background = 282c34
+# foreground= ffffff
+
+
+##==default_keybindings (Darwin has Super instead of C):
+# reset font              C-0
+# smaller/bigger font     C-'-/+'
+# write_scrollback_file   C-j
+# new_window/close_surface/quit/close_window   C-S-n/w/q/ A-f4
+# new_tab                 C-S-t
+# split_right/down        C-S-o/e
+# gotosplit left/right    S-Sup-</>
+# goto split left/down/up/right <-..
+# scroll top/bottom       S-home/end
+# scroll up/down          S-pageup/pagedown
+# semantic prompts?       S-C-pageup/pagedown
+# inspector               S-C-i
+# toggle fullscreen       C-Enter
+# goto tab [1-9]          C-[1-9]
+
+#keybind = ctrl+z=close_surface
+# keybind = ctrl+d=new_split:left
+# keybind = ctrl+d=new_split:down
+# keybind = ctrl+d=new_split:top
+# keybind = ctrl+d=new_split:right
+# keybind = ctrl++=increase_font_size
+# keybind = ctrl+-=decrease_font_size
+keybind = ctrl+equal=increase_font_size:1
+keybind = ctrl+minus=decrease_font_size:1
+# keybind = ctrl+minus=decrease_font_size
+keybind = ctrl+z=reload_config
+keybind = ctrl+shift+v=paste_from_clipboard
+# keybind = ctrl+a=new_split:right
+
+##==default_commands
+# reset terminal state    reset
+
+# # black
+# palette = 0=#1d2021
+# palette = 8=#7c6f64
+# # red
+# palette = 1=#cc241d
+# palette = 9=#fb4934
+# # green
+# palette = 2=#98971a
+# palette = 10=#b8bb26
+# # yellow
+# palette = 3=#d79921
+# palette = 11=#fabd2f
+# # blue
+# palette = 4=#458588
+# palette = 12=#83a598
+# # purple
+# palette = 5=#b16286
+# palette = 13=#d3869b
+# # aqua
+# palette = 6=#689d6a
+# palette = 14=#8ec07c
+# # white
+# palette = 7=#a89984
+# palette = 15=#fbf1c7
+
+command = nu
+
+#====commands
+# reset - reset terminal (ie on applications breaking stateful kitty protocol)
+
+#====shortcuts
+
+window-decoration = false
+
+background-opacity = 0.925
+
+# Only works on MacOS
+# background-blur-radius = 20
+
+confirm-close-surface = false
+
+font-family = JetBrainsMono NF
+font-family-bold = JetBrainsMono NF
+font-family-italic = JetBrainsMono NF
+font-family-bold-italic = JetBrainsMono NF
+# custom-shader = /home/rond/.config/ghostty/shader4

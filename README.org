@@ -1,0 +1,13 @@
+* rond's Dotfiles
+
+The nix part of the config is based on the minimal example over at https://github.com/Misterio77/nix-starter-configs
+
+Important commands
+
+#+begin_src sh
+  nixos-rebuild switch --flake .
+#+end_src
+
+#+begin_src sh
+  home-manager switch --flake .
+#+end_src

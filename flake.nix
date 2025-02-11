@@ -1,5 +1,5 @@
 {
-  description = "rond's Home Manager and NixOS config";
+  description = "paradox's Home Manager and NixOS config";
 
   inputs = {
     # Nixpkgs
@@ -41,11 +41,11 @@
     # Available through 'home-manager --flake .#your-username@your-hostname'
     homeConfigurations = {
       # FIXME replace with your username@hostname
-      "rond@grasshopper" = home-manager.lib.homeManagerConfiguration {
+      "paradox@paranix" = home-manager.lib.homeManagerConfiguration {
         pkgs = nixpkgs.legacyPackages.x86_64-linux; # Home-manager requires 'pkgs' instance
         extraSpecialArgs = {inherit inputs outputs;};
         # > Our main home-manager configuration file <
-        modules = [ ./home/rond/grasshopper.nix ];
+        modules = [ ./home/paradox/paranix.nix ];
       };
     };
   };

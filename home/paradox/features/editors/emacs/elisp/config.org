@@ -1,0 +1,2034 @@
+#+TITLE: rond's Emacs Config
+#+AUTHOR: rondDev
+
+* Table of contents                                                 :toc:toc:
+- [[#initial-bootstrapping][Initial bootstrapping]]
+- [[#set-universal-escape][Set universal escape]]
+  - [[#make-macro-for-loading][Make macro for loading...?]]
+  - [[#add-lib-to-load-path][Add `./lib` to load path]]
+  - [[#bootstrap-elpaca][Bootstrap elpaca]]
+- [[#annalist][Annalist]]
+- [[#anzu][Anzu]]
+- [[#apheleia][Apheleia]]
+- [[#avy][Avy]]
+- [[#consult][Consult]]
+- [[#corfu][Corfu]]
+- [[#dabbrev][Dabbrev]]
+- [[#dash][Dash]]
+- [[#dashboard][Dashboard]]
+- [[#doom-modeline][Doom-modeline]]
+- [[#doom-themes][Doom-themes]]
+- [[#editorconfig][Editorconfig]]
+- [[#eldoc-box][Eldoc-box]]
+- [[#embark][Embark]]
+- [[#evil][Evil]]
+- [[#exec-path-from-shell][Exec-path-from-shell]]
+- [[#f][f]]
+- [[#gcmh---garbace-collection][Gcmh - Garbace Collection]]
+- [[#general][General]]
+- [[#helpful][Helpful]]
+- [[#hl-todo][Hl-todo]]
+- [[#hydra][Hydra]]
+- [[#indent-bars][indent-bars]]
+- [[#link-hint][Link-hint]]
+- [[#lsp-mode][Lsp-mode]]
+- [[#magit][Magit]]
+- [[#markdown-mode][Markdown-mode]]
+- [[#marginalia][Marginalia]]
+- [[#nerd-icons][Nerd Icons]]
+- [[#orderless][Orderless]]
+- [[#org--extra][Org (+ extra)]]
+- [[#origami][Origami]]
+- [[#page-break-lines][Page-break-lines]]
+- [[#parinfer-rust-mode][Parinfer-rust-mode]]
+- [[#persistent-scratch][Persistent-scratch]]
+- [[#projectile-and-persp-mode][Projectile and persp-mode]]
+- [[#pulsar][Pulsar]]
+- [[#rainbow][Rainbow]]
+- [[#s][s]]
+- [[#smartparens][Smartparens]]
+- [[#spacious-padding][Spacious-padding]]
+- [[#tempel][Tempel]]
+- [[#transient][Transient]]
+- [[#undo-fu][Undo-fu]]
+- [[#vertico][Vertico]]
+- [[#vterm][Vterm]]
+- [[#wakatime][Wakatime]]
+- [[#which-key][Which-key]]
+- [[#yasnippet][Yasnippet]]
+- [[#languages][Languages]]
+  - [[#tree-sitter][Tree-sitter]]
+  - [[#astro][Astro]]
+  - [[#hush][Hush]]
+  - [[#nix][Nix]]
+  - [[#rust][Rust]]
+  - [[#svelte][Svelte]]
+  - [[#tailwind][Tailwind]]
+  - [[#typescript][Typescript]]
+  - [[#zig][Zig]]
+
+* Initial bootstrapping
+#+begin_src emacs-lisp
+;; config.el -*- lexical-binding: t -*-
+(message "fuck")
+(with-eval-after-load 'time
+  (setopt display-time-24hr-format t))
+
+(with-eval-after-load 'warnings
+  (setopt warning-minimum-level :error))
+
+(global-display-line-numbers-mode +1)
+(setq display-line-numbers t)
+(setq display-line-numbers-mode 'relative)
+(menu-bar--display-line-numbers-mode-relative)
+
+(defconst my/before-load-init-time (current-time))
+
+           ;;;###autoload
+(defun my/load-init-time ()
+  "Loading time of user init files including time for `after-init-hook'."
+  (let ((time1 (float-time
+                (time-subtract after-init-time my/before-load-init-time)))
+        (time2 (float-time
+                (time-subtract (current-time) my/before-load-init-time))))
+    (message (concat "Loading init files: %.0f [msec], "
+                     "of which %.f [msec] for `after-init-hook'.")
+             (* 1000 time1) (* 1000 (- time2 time1)))))
+(add-hook 'after-init-hook #'my/load-init-time t)
+
+(defvar my/tick-previous-time my/before-load-init-time)
+
+(defun my/emacs-init-time ()
+  "Emacs booting time in msec."
+  (interactive)
+  (message "Emacs booting time: %.0f [msec] = `emacs-init-time'."
+           (* 1000
+              (float-time (time-subtract
+                           after-init-time
+                           before-init-time)))))
+
+(add-hook 'after-init-hook #'my/emacs-init-time)
+
+(add-hook 'emacs-startup-hook #'savehist-mode)
+(add-hook 'emacs-startup-hook #'save-place-mode)
+
+(defmacro when-darwin (&rest body)
+  (when (string= system-type "darwin")
+    `(progn ,@body)))
+
+(defmacro when-darwin-not-window-system (&rest body)
+  (when (and (string= system-type "darwin")
+             window-system)
+    `(progn ,@body)))
+
+(menu-bar-mode -1)
+(tool-bar-mode -1)
+
+(add-hook 'emacs-startup-hook #'global-auto-revert-mode)
+(defun my/copy-from-osx ()
+  (shell-command-to-string "pbpaste"))
+
+(defun my/paste-to-osx (text)
+  (let ((process-connection-type nil))
+    (let ((proc (start-process "pbcopy" "*Messages*" "pbcopy")))
+      (process-send-string proc text)
+      (process-send-eof proc))))
+
+(when-darwin-not-window-system
+ (setq interprogram-cut-function #'my/paste-to-osx)
+ (setq interprogram-paste-function #'my/copy-from-osx))
+
+(defmacro my/with-timer (name &rest body)
+  `(let ((time (current-time)))
+     ,@body
+     (message "%s: %.06f" ,name (float-time (time-since time)))))
+
+(defvar my/delayed-priority-high-configurations '())
+(defvar my/delayed-priority-high-configuration-timer nil)
+
+(defvar my/delayed-priority-low-configurations '())
+(defvar my/delayed-priority-low-configuration-timer nil)
+
+(add-hook 'emacs-startup-hook
+          (lambda ()
+            (setq my/delayed-priority-high-configuration-timer
+                  (run-with-timer
+                   0.1 0.001
+                   (lambda ()
+                     (if my/delayed-priority-high-configurations
+                         (let ((inhibit-message t))
+                           (eval (pop my/delayed-priority-high-configurations)))
+                       (progn
+                         (cancel-timer my/delayed-priority-high-configuration-timer))))))
+            (setq my/delayed-priority-low-configuration-timer
+                  (run-with-timer
+                   0.3 0.001
+                   (lambda ()
+                     (if my/delayed-priority-low-configurations
+                         (let ((inhibit-message t))
+                           (eval (pop my/delayed-priority-low-configurations)))
+                       (progn
+                         (cancel-timer my/delayed-priority-low-configuration-timer))))))))
+
+(defmacro with-delayed-execution-priority-high (&rest body)
+  (declare (indent 0))
+  `(setq my/delayed-priority-high-configurations
+         (append my/delayed-priority-high-configurations ',body)))
+
+(defmacro with-delayed-execution (&rest body)
+  (declare (indent 0))
+  `(setq my/delayed-priority-low-configurations
+         (append my/delayed-priority-low-configurations ',body)))
+
+(defadvice split-window (after split-window-after activate)
+  (other-window 1))
+
+(with-delayed-execution
+  (defun switch-to-minibuffer-window ()
+    "switch to minibuffer window (if active)"
+    (when (active-minibuffer-window)
+      (select-frame-set-input-focus (window-frame (active-minibuffer-window)))
+      (select-window (active-minibuffer-window))))
+
+  (defun preserve-minibuffer-focus ()
+    "keep the minibuffer in focus"
+    (when (and (>= (recursion-depth) 1) (active-minibuffer-window))
+      (switch-to-minibuffer-window)))
+
+  (add-hook 'mouse-leave-buffer-hook 'preserve-minibuffer-focus)
+  (indent-tabs-mode nil)
+  (global-hl-line-mode) ;; Highlight the current line in all buffers
+  (scroll-bar-mode -1)
+  (show-paren-mode 1)
+  (defadvice keyboard-escape-quit
+      (around keyboard-escape-quit-dont-close-windows activate)
+    (let ((buffer-quit-function (lambda () ())))
+      ad-do-it))
+  (unless backup-directory-alist
+    (defvar gk//tmpdir "/tmp/gkmacs/"
+      "Temp directory to use")
+    (when (not (file-directory-p gk//tmpdir))
+      (make-directory gk//tmpdir))
+
+    (setq backup-directory-alist `(("." . , gk//tmpdir))))
+  (tooltip-mode -1) ;; Don't display tooltips as popups, use the echo area instead
+  (setq-default indent-tabs-mode nil)
+  (require 'uniquify)
+  (setq uniquify-buffer-name-style 'forward
+        save-interprogram-paste-before-kill t
+        apropos-do-all t
+        mouse-yank-at-point t
+        visible-bell t
+        load-prefer-newer t
+        backup-by-copying t
+        frame-inhibit-implied-resize t
+        ediff-window-setup-function 'ediff-setup-windows-plain
+        custom-file (expand-file-name "custom.el" user-emacs-directory))
+  (setq-default tab-width 2)
+  (setq echo-keystrokes 0.1)
+  (column-number-mode) ;; Display column number in the mode line
+  (recentf-mode) ;; Enable recording recently-visited files
+  (setq enable-local-variables :all)
+  (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
+  (setopt use-short-answers t)
+  (setq auto-save-file-name-transforms
+        `((".*" "/tmp/gkmacs/" t)))
+  (with-eval-after-load 'password-cache
+    ;; config
+    (setq password-cache t)
+    (setq password-cache-expiry 3600))
+
+  (with-eval-after-load 'minibuffer
+    (setopt read-file-name-completion-ignore-case t))
+
+  (setq completion-ignore-case t)
+  (setq read-buffer-completion-ignore-case t)
+
+  (setq system-time-locale "C")
+
+  (setopt kill-ring-max 100000)
+
+  (custom-set-variables '(savehist-additional-variables '(kill-ring))))
+(add-hook 'emacs-startup-hook (lambda ()
+                                (when (get-buffer-window "*scratch*")
+                                  (bury-buffer "*scratch*"))))
+
+;; (set-frame-font "Iosevka Comfy 10" nil t)
+  ;; (set-frame-font "JetBrains Mono Nerd Font 10" nil t)
+#+end_src
+
+
+* Set universal escape
+#+begin_src emacs-lisp
+    ;;; Universal, non-nuclear escape
+
+  ;; `keyboard-quit' is too much of a nuclear option. I wanted an ESC/C-g to
+  ;; do-what-I-mean. It serves four purposes (in order):
+  ;;
+  ;; 1. Quit active states; e.g. highlights, searches, snippets, iedit,
+  ;;    multiple-cursors, recording macros, etc.
+  ;; 2. Close popup windows remotely (if it is allowed to)
+  ;; 3. Refresh buffer indicators, like diff-hl and flycheck
+  ;; 4. Or fall back to `keyboard-quit'
+  ;;
+  ;; And it should do these things incrementally, rather than all at once. And it
+  ;; shouldn't interfere with recording macros or the minibuffer. This may require
+  ;; you press ESC/C-g two or three times on some occasions to reach
+  ;; `keyboard-quit', but this is much more intuitive.
+
+  (defvar doom-escape-hook nil
+    "A hook run when C-g is pressed (or ESC in normal mode, for evil users).
+
+    More specifically, when `doom/escape' is pressed. If any hook returns non-nil,
+    all hooks after it are ignored.")
+
+  (defun doom/escape (&optional interactive)
+    "Run `doom-escape-hook'."
+    (interactive (list 'interactive))
+    (let ((inhibit-quit t))
+      (cond ((minibuffer-window-active-p (minibuffer-window))
+             ;; quit the minibuffer if open.
+             (when interactive
+               (setq this-command 'abort-recursive-edit))
+             (abort-recursive-edit))
+            ;; Run all escape hooks. If any returns non-nil, then stop there.
+            ((run-hook-with-args-until-success 'doom-escape-hook))
+            ;; don't abort macros
+            ((or defining-kbd-macro executing-kbd-macro) nil)
+            ;; Back to the default
+            ((unwind-protect (keyboard-quit)
+               (when interactive
+                 (setq this-command 'keyboard-quit)))))))
+
+  (global-set-key [remap keyboard-quit] #'doom/escape)
+
+    ;;;###autoload
+  (defun +evil-escape-a (&rest _)
+    "Call `doom/escape' if `evil-force-normal-state' is called interactively."
+    (when (called-interactively-p 'any)
+      (call-interactively #'doom/escape)))
+
+  (advice-add #'evil-force-normal-state :after #'+evil-escape-a)
+  (advice-add #'evil-force-normal-state :after #'anzu--reset-status)
+
+
+
+
+
+
+#+end_src
+
+** Make macro for loading...?
+#+begin_src emacs-lisp
+(defmacro add-el-clone (package)
+  "Add package to load-path"
+  `(add-to-list 'load-path (locate-user-emacs-file (format "el-clone/%s" ,package))))
+
+(defmacro my//clone (package)
+  "Macro for el-clone (github only)"
+  `(el-clone :repo ,package))
+#+end_src
+
+
+** Add `./lib` to load path
+#+begin_src emacs-lisp
+(add-to-list 'load-path (concat user-emacs-directory "lib/"))
+#+end_src
+
+** Bootstrap elpaca
+#+begin_src emacs-lisp
+(defconst elpaca-core-date 20250115)
+(defvar elpaca-installer-version 0.9)
+(defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
+(defvar elpaca-builds-directory (expand-file-name "builds/" elpaca-directory))
+(defvar elpaca-repos-directory (expand-file-name "repos/" elpaca-directory))
+(defvar elpaca-order '(elpaca :repo "https://github.com/progfolio/elpaca.git"
+                              :ref nil :depth 1
+                              :files (:defaults "elpaca-test.el" (:exclude "extensions"))
+                              :build (:not elpaca--activate-package)))
+(let* ((repo  (expand-file-name "elpaca/" elpaca-repos-directory))
+       (build (expand-file-name "elpaca/" elpaca-builds-directory))
+       (order (cdr elpaca-order))
+       (default-directory repo))
+  (add-to-list 'load-path (if (file-exists-p build) build repo))
+  (unless (file-exists-p repo)
+    (make-directory repo t)
+    (when (< emacs-major-version 28) (require 'subr-x))
+    (condition-case-unless-debug err
+        (if-let* ((buffer (pop-to-buffer-same-window "*elpaca-bootstrap*"))
+                  ((zerop (apply #'call-process `("git" nil ,buffer t "clone"
+                                                  ,@(when-let* ((depth (plist-get order :depth)))
+                                                      (list (format "--depth=%d" depth) "--no-single-branch"))
+                                                  ,(plist-get order :repo) ,repo))))
+                  ((zerop (call-process "git" nil buffer t "checkout"
+                                        (or (plist-get order :ref) "--"))))
+                  (emacs (concat invocation-directory invocation-name))
+                  ((zerop (call-process emacs nil buffer nil "-Q" "-L" "." "--batch"
+                                        "--eval" "(byte-recompile-directory \".\" 0 'force)")))
+                  ((require 'elpaca))
+                  ((elpaca-generate-autoloads "elpaca" repo)))
+            (progn (message "%s" (buffer-string)) (kill-buffer buffer))
+          (error "%s" (with-current-buffer buffer (buffer-string))))
+      ((error) (warn "%s" err) (delete-directory repo 'recursive))))
+  (unless (require 'elpaca-autoloads nil t)
+    (require 'elpaca)
+    (elpaca-generate-autoloads "elpaca" repo)
+    (load "./elpaca-autoloads")))
+(add-hook 'after-init-hook #'elpaca-process-queues)
+(elpaca `(,@elpaca-order))
+
+(elpaca elpaca-use-package
+  ;; Enable use-package :ensure support for Elpaca.
+  (elpaca-use-package-mode)
+  ;; Assume :elpaca t unless otherwise specified.
+  (setq elpaca-use-package-by-default t))
+#+end_src
+
+* Annalist
+#+begin_src emacs-lisp
+(use-package annalist)
+#+end_src
+
+* Anzu
+#+begin_src emacs-lisp
+  (use-package anzu
+    :config
+    (global-anzu-mode +1))
+#+end_src
+
+* Apheleia
+#+begin_src emacs-lisp
+  (use-package apheleia
+    :config
+    (apheleia-global-mode +1))
+
+  (add-hook 'prog-mode-hook 'display-line-numbers-mode)
+#+end_src
+
+* Avy
+#+begin_src emacs-lisp
+  (use-package avy)
+#+end_src
+
+
+* Consult
+#+begin_src emacs-lisp
+    (use-package consult)
+#+end_src
+
+* Corfu
+#+begin_src emacs-lisp
+  (use-package corfu
+    :config
+    (setq corfu-auto t
+          corfu-quit-no-match t
+          text-mode-ispell-word-completion nil)
+    (global-corfu-mode))
+#+end_src
+
+* Dabbrev
+#+begin_src emacs-lisp
+;; Use Dabbrev with Corfu!
+  (use-package dabbrev
+    :ensure nil
+    ;; Swap M-/ and C-M-/
+    :bind (("M-/" . dabbrev-completion)
+           ("C-M-/" . dabbrev-expand))
+    :config
+    (add-to-list 'dabbrev-ignored-buffer-regexps "\\` ")
+    ;; Since 29.1, use `dabbrev-ignored-buffer-regexps' on older.
+    (add-to-list 'dabbrev-ignored-buffer-modes 'doc-view-mode)
+    (add-to-list 'dabbrev-ignored-buffer-modes 'pdf-view-mode)
+    (add-to-list 'dabbrev-ignored-buffer-modes 'tags-table-mode))
+#+end_src
+
+* Dash
+#+begin_src emacs-lisp
+  (use-package dash)
+#+end_src
+
+* Dashboard
+#+begin_src emacs-lisp
+(use-package dashboard
+  :config
+  ;;  (add-hook 'elpaca-after-init-hook #'dashboard-insert-startupify-lists)
+  ;;  (add-hook 'elpaca-after-init-hook #'dashboard-initialize)
+  (setq dashboard-item-shortcuts '((recents   . "r")
+                                   (bookmarks . "m")
+                                   (projects  . "p")
+                                   (agenda    . "a")
+                                   (registers . "e")))
+  (setq initial-buffer-choice (lambda () (get-buffer-create dashboard-buffer-name)))
+  (dashboard-setup-startup-hook))
+#+end_src
+
+* Doom-modeline
+#+begin_src emacs-lisp
+     (use-package doom-modeline
+         :after s
+       :config
+       (doom-modeline-mode 1))
+#+end_src
+
+* Doom-themes
+#+begin_src emacs-lisp
+(use-package doom-themes
+  :config
+  (load-theme 'doom-challenger-deep t))
+#+end_src
+
+* Editorconfig
+#+begin_src emacs-lisp
+  (use-package editorconfig
+    :config
+    (editorconfig-mode 1))
+#+end_src
+
+* Eldoc-box
+#+begin_src emacs-lisp
+    (use-package eldoc-box
+      :after markdown-mode
+      :preface
+      (declare-function eldoc-box-help-at-point "eldoc-box")
+      (declare-function eldoc-box-quit-frame "eldoc-box")
+
+      (defun my/eldoc-box-visible-p ()
+        "Return whether the `eldoc-box' popup is visible."
+        (and eldoc-box--frame (frame-visible-p eldoc-box--frame)))
+
+      (defun my/eldoc-box-toggle ()
+        "Toggle the `eldoc-box-help-at-point' popup."
+        (interactive)
+        (require 'eldoc-box)
+        (if (my/eldoc-box-visible-p)
+            (eldoc-box-quit-frame)
+          (eldoc-box-help-at-point)))
+
+      ;; Workaround to ensure the correct documentation is shown by the `eldoc-box'
+      ;; popup if Eldoc is updated. See: https://github.com/casouri/eldoc-box/issues/96.
+      (defun my/eldoc-display-in-eldoc-box (&rest _)
+        "Display latest Eldoc buffer in `eldoc-box' if visible."
+        (when (my/eldoc-box-visible-p)
+          (eldoc-box-help-at-point)))
+
+      :bind
+      ("M-p" . my/eldoc-box-toggle)
+      :custom
+      (eldoc-box-clear-with-C-g t)
+      :config
+      ;; The function `my/eldoc-display-in-eldoc-box' needs to be called after
+      ;; `eldoc-display-in-buffer' to get the new value of  `eldoc--doc-buffer'.
+      (remove-hook 'eldoc-display-functions #'eldoc-display-in-buffer)
+      (add-hook 'eldoc-display-functions #'my/eldoc-display-in-eldoc-box)
+      (add-hook 'eldoc-display-functions #'eldoc-display-in-buffer))
+
+
+#+end_src
+
+* Embark
+#+begin_src emacs-lisp
+  (use-package embark
+    :bind
+    (("C-." . embark-act)         ;; pick some comfortable binding
+     ("C-;" . embark-dwim)        ;; good alternative: M-.
+     ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
+
+    :config
+
+    ;; Optionally replace the key help with a completing-read interface
+    (setq prefix-help-command #'embark-prefix-help-command)
+
+    ;; Show the Embark target at point via Eldoc. You may adjust the
+    ;; Eldoc strategy, if you want to see the documentation from
+    ;; multiple providers. Beware that using this can be a little
+    ;; jarring since the message shown in the minibuffer can be more
+    ;; than one line, causing the modeline to move up and down:
+
+    ;; (add-hook 'eldoc-documentation-functions #'embark-eldoc-first-target)
+    ;; (setq eldoc-documentation-strategy #'eldoc-documentation-compose-eagerly)
+
+    :config
+
+    ;; Hide the mode line of the Embark live/completions buffers
+    (add-to-list 'display-buffer-alist
+                 '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
+                   nil
+                   (window-parameters (mode-line-format . none)))))
+
+  ;; Consult users will also want the embark-consult package.
+  (use-package embark-consult
+    ;; :ensure t ; only need to install it, embark loads it after consult if found
+    :hook
+    (embark-collect-mode . consult-preview-at-point-mode))
+
+#+end_src
+
+* Evil
+#+begin_src emacs-lisp
+  (setq evil-want-keybinding nil)
+  (use-package evil
+    :config
+    (setq evil-want-C-u-scroll t)
+    (setq evil-want-C-i-jump nil)
+
+    (evil-set-undo-system 'undo-fu)
+    (setq evil-kill-on-visual-paste nil)
+    (evil-mode 1))
+
+  (use-package evil-collection
+    :after evil
+    :config
+    (evil-collection-xref-setup)
+    (evil-collection-dired-setup)
+    (evil-collection-ibuffer-setup)
+    (evil-collection-init))
+  (use-package evil-escape
+    :after evil
+    :config
+    (evil-escape-mode)
+    (setq-default evil-escape-key-sequence "jk"))
+
+  (use-package evil-goggles
+    :after evil
+    :config
+    (evil-goggles-mode))
+
+  (use-package evil-nerd-commenter
+    :after evil
+    :config
+    (evilnc-default-hotkeys))
+
+  (use-package evil-surround
+    :after evil
+    :config
+    (global-evil-surround-mode 1))
+  (use-package evil-org
+    :after (org general)
+    :hook (org-mode . evil-org-mode)
+    :config
+    (require 'evil-org-agenda)
+
+    (defun my//load-org-keybinds ()
+      (my/mmap org-mode-map
+        "RET" '+org/dwim-at-point)
+      (my/imap org-mode-map
+        "RET" '+org/return
+        "S-RET" '+org/shift-return)
+      (my/nmap org-mode-map
+        "za" '+org/toggle-fold))
+
+    (add-hook 'evil-org-mode-hook 'my//load-org-keybinds)
+    (evil-org-agenda-set-keys))
+#+end_src
+
+* Exec-path-from-shell
+#+begin_src emacs-lisp
+  (use-package exec-path-from-shell
+    :config
+    (exec-path-from-shell-initialize))
+#+end_src
+
+* f
+#+begin_src emacs-lisp
+     (use-package f
+       :after s)
+#+end_src
+
+* Gcmh - Garbace Collection
+#+begin_src emacs-lisp
+  (use-package gcmh
+    :config
+    (gcmh-mode 1))
+#+end_src
+
+* General
+#+begin_src emacs-lisp
+    (use-package general
+      :after (projectile evil)
+      :config
+
+      (general-define-key
+       :states '(emacs insert normal)
+       :prefix-map 'my//leader-map
+       :prefix "SPC"
+       ;; :global-prefix "C-c"
+       :non-normal-prefix "M-SPC")
+
+      ;; (general-create-definer my/leader-keys
+      ;;   :keymaps 'my//leader-map)
+      (general-create-definer my/leader-keys
+        :states '(normal insert visual emacs)
+        :prefix "SPC"
+        :global-prefix "M-SPC")
+      (general-create-definer my/nmap
+        :states '(normal))
+      (general-create-definer my/mmap
+        :states '(motion))
+      (general-create-definer my/vmap
+        :states '(visual))
+      (general-create-definer my/evil-keys
+        :states '(motion normal insert visual emacs))
+      (general-create-definer my/imap
+        :states '(insert))
+
+      (general-auto-unbind-keys)
+
+      ;; TODO: "with-eval-after-load" per package keybinds
+
+      (my/leader-keys
+        "/" '(evilnc-comment-or-uncomment-lines :wk "comment/uncomment")
+        "SPC" '(projectile-find-file :wk "find file in project")
+        "TAB" '(:keymap persp-key-map :package persp-mode)
+        "b" '(:keymap ibuffer-mode-map :package ibuffer)
+        "bb" '(switch-to-buffer :wk "switch to buffer")
+        "bi" '(ibuffer :wk "ibuffer")
+        "c" '(:keymap lsp-command-map :package lsp-mode)
+        "f" '(:ignore t :wk "file")
+        "fd" '(dired-jump :wk "open dired")
+        "ff" '(find-file :wk "find file")
+        "fs" '(save-buffer :wk "save file")
+        "gg" '(magit-status :wk "magit")
+        "h" '(:keymap help-map :wk "help")
+        "hf" '(helpful-callable :wk "describe function")
+        "hk" '(helpful-key :wk "describe key")
+        "hm" '(describe-mode :wk "describe mode")
+        "hv" '(helpful-variable :wk "describe variable")
+        "hx" '(helpful-command :wk "describe mode")
+        "o" '(:ignore t :wk "open")
+        "ot" '(multi-vterm-project :wk "open project terminal")
+        "p" '(:keymap projectile-command-map :package projectile)
+        "psr" '(consult-ripgrep :wk "ripgrep in project")
+        "w" '(:keymap evil-window-map :wk "window" :package evil))
+
+      ;; b
+      (with-eval-after-load 'consult
+        (my/leader-keys))
+
+
+
+      (general-evil-setup)
+      (with-eval-after-load 'evil-nerd-commenter
+
+        (my/mmap prog-mode-map
+          "gcc" 'evilnc-comment-or-uncomment-lines)
+        (my/mmap conf-mode-map
+          "gcc" 'evilnc-comment-or-uncomment-lines)
+        (my/vmap prog-mode-map
+          "gc" 'evilnc-comment-or-uncomment-lines)
+        (with-eval-after-load 'eldoc
+          (eldoc-add-command 'doom/escape)
+          ;; (eldoc-box-hover-mode)
+          ;; (setq eldoc-echo-area-use-multiline-p nil)
+
+          (my/mmap
+            "K" 'my/eldoc-box-toggle)))
+      (my/evil-keys magit-mode-map
+        "h" 'evil-backward-char
+        "j" 'evil-next-visual-line
+        "k" 'evil-previous-line
+        "l" 'evil-forward-char
+        "gg" 'evil-goto-first-line
+        "G" 'evil-goto-line)
+      (my/imap
+        "C-j" 'tempel-complete)
+
+      
+      
+
+      (general-define-key
+       :states '(normal visual motion)
+       "gl" 'evil-end-of-line
+       "L" 'evil-end-of-line
+       "H" 'evil-first-non-blank
+       "gh" 'evil-first-non-blank))
+
+
+
+    ;; this will make one keybinding that will result in all the following keys
+    ;; being bound to 'foo:
+    ;; - C-c f in all states
+    ;; - SPC f in normal state
+    ;; - M-SPC f in emacs and insert states
+    ;; (my-map "f" 'foo)
+
+    ;; don't do this (6x the keybindings)!
+    ;; (general-create-definer my-map
+    ;;   :states '(emacs insert normal)
+    ;;   :prefix-map 'my-prefix-map
+    ;;   :global-prefix "C-c"
+    ;;   :non-normal-prefix "M-SPC"
+    ;;   :prefix "SPC")
+    ;; (my-map "f" 'foo))
+#+end_src
+
+* Helpful
+#+begin_src emacs-lisp
+(use-package helpful
+            :after s)
+#+end_src
+
+* Hl-todo
+#+begin_src emacs-lisp
+  (use-package hl-todo
+    :config
+    (add-hook 'prog-mode-hook #'hl-todo-mode)
+    (setq hl-todo-highlight-punctuation ":"
+          hl-todo-keyword-faces
+          '(;; For reminders to change or add something at a later date.
+            ("TODO" warning bold)
+            ;; For code (or code paths) that are broken, unimplemented, or slow,
+            ;; and may become bigger problems later.
+            ("FIXME" error bold)
+            ;; For code that needs to be revisited later, either to upstream it,
+            ;; improve it, or address non-critical issues.
+            ("REVIEW" font-lock-keyword-face bold)
+            ;; For code smells where questionable practices are used
+            ;; intentionally, and/or is likely to break in a future update.
+            ("HACK" font-lock-constant-face bold)
+            ;; For sections of code that just gotta go, and will be gone soon.
+            ;; Specifically, this means the code is deprecated, not necessarily
+            ;; the feature it enables.
+            ("DEPRECATED" font-lock-doc-face bold)
+            ;; Extra keywords commonly found in the wild, whose meaning may vary
+            ;; from project to project.
+            ("NOTE" success bold)
+            ("BUG" error bold)
+            ("XXX" font-lock-constant-face bold))))
+
+#+end_src
+
+* Hydra
+#+begin_src emacs-lisp
+  (use-package hydra)
+#+end_src
+
+* indent-bars
+#+begin_src emacs-lisp
+  (use-package indent-bars
+  :custom
+    (indent-bars-no-descend-lists t) ; no extra bars in continued func arg lists
+    (indent-bars-treesit-support t)
+    (indent-bars-treesit-ignore-blank-lines-types '("module"))
+    ;; Add other languages as needed
+    (indent-bars-treesit-scope '((python function_definition class_definition for_statement))
+                               if_statement with_statement while_statement)
+    ;; Note: wrap may not be needed if no-descend-list is enough
+    ;;(indent-bars-treesit-wrap '((python argument_list parameters ; for python, as an example
+    ;;				      list list_comprehension
+    ;;				      dictionary dictionary_comprehension
+    ;;				      parenthesized_expression subscript)))
+    :hook ((python-base-mode yaml-mode pascal-mode typescript-ts-mode typescript-mode) . indent-bars-mode))
+#+end_src
+
+* Link-hint
+#+begin_src emacs-lisp
+  (use-package link-hint)
+#+end_src
+
+* Lsp-mode
+#+begin_src emacs-lisp
+  (use-package lsp-mode
+    :after (s corfu orderless markdown-mode)
+    :init
+    ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
+    (setq lsp-keymap-prefix "C-c l")
+    :hook (;; replace XXX-mode with concrete major-mode(e. g. python-mode)
+           ;; (XXX-mode . lsp)
+           ;; if you want which-key integration
+           (lsp-mode . lsp-enable-which-key-integration)
+           (typescript-mode . lsp-deferred)
+           (typescript-ts-mode . lsp-deferred)
+           (astro-ts-mode . lsp-deferred))
+    :commands lsp
+    :config
+    (setq lsp-completion-provider :none)
+    (defun corfu-lsp-setup ()
+      (setq-local completion-styles '(orderless)
+                  completion-category-defaults nil))
+    (add-hook 'lsp-mode-hook #'corfu-lsp-setup)
+    (require 'lsp-lens)
+    (require 'lsp-headerline)
+    (lsp-register-client
+     (make-lsp-client :new-connection (lsp-stdio-connection "nixd")
+                      :major-modes '(nix-mode)
+                      :priority 99
+                      :server-id 'nixd)))
+    
+
+  ;; optionally
+  (use-package lsp-ui :commands lsp-ui-mode)
+  ;; (use-package lsp-treemacs :commands lsp-treemacs-errors-list)
+
+  (use-package consult-lsp
+    :after (consult spinner s))
+#+end_src
+
+* Magit
+#+begin_src emacs-lisp
+  (use-package magit
+        :config
+        (add-hook 'git-commit-mode-hook 'evil-insert-state))
+
+  (use-package ghub)
+  (elpaca (llama :host github :repo "tarsius/llama"))
+  (use-package forge
+    :after ghub)
+#+end_src
+
+* Markdown-mode
+#+begin_src emacs-lisp
+    (use-package markdown-mode)
+    (autoload 'markdown-mode "markdown-mode"
+     "Major mode for editing Markdown files" t)
+    (add-to-list 'auto-mode-alist '("\\.text\\'" . markdown-mode))
+    (add-to-list 'auto-mode-alist '("\\.markdown\\'" . markdown-mode))
+    (add-to-list 'auto-mode-alist '("\\.md\\'" . markdown-mode))
+
+#+end_src
+
+* Marginalia
+#+begin_src emacs-lisp
+    (use-package marginalia
+      :config
+        (marginalia-mode))
+#+end_src
+
+* Nerd Icons
+#+begin_src emacs-lisp
+    (use-package nerd-icons
+      :after s
+      :custom
+      (nerd-icons-font-famile "JetBrains Mono Nerd Font"))
+
+     (use-package nerd-icons-completion
+       :after marginalia
+       :config
+       (nerd-icons-completion-mode)
+       (add-hook 'marginalia-mode-hook #'nerd-icons-completion-marginalia-setup))
+
+    (use-package nerd-icons-corfu
+      :config
+      (add-to-list 'corfu-margin-formatters #'nerd-icons-corfu-formatter)
+
+      ;; Optionally:
+      (setq nerd-icons-corfu-mapping
+            '((array :style "cod" :icon "symbol_array" :face font-lock-type-face)
+              (boolean :style "cod" :icon "symbol_boolean" :face font-lock-builtin-face)
+              ;; ...
+              (t :style "cod" :icon "code" :face font-lock-warning-face))))
+    ;; Remember to add an entry for `t', the library uses that as default.
+
+    ;; The Custom interface is also supported for tuning the variable above.
+
+
+    (use-package nerd-icons-dired
+      :hook
+      (dired-mode . nerd-icons-dired-mode))
+
+    (use-package nerd-icons-ibuffer
+      :hook (ibuffer-mode . nerd-icons-ibuffer-mode))
+#+end_src
+
+* Orderless
+#+begin_src emacs-lisp
+;; Optionally use the `orderless' completion style.
+  (use-package orderless
+    :custom
+    ;; Configure a custom style dispatcher (see the Consult wiki)
+    ;; (orderless-style-dispatchers '(+orderless-consult-dispatch orderless-affix-dispatch))
+    ;; (orderless-component-separator #'orderless-escapable-split-on-space)
+    (completion-styles '(orderless basic))
+    (completion-category-defaults nil)
+    (completion-category-overrides '((file (styles partial-completion)))))
+#+end_src
+
+* Org (+ extra)
+#+begin_src emacs-lisp
+  (with-eval-after-load 'org
+    (setq org-return-follows-link  t)
+    (setq org-todo-keywords
+          '((sequence "TODO(t!)" "PROJ(p!)" "LOOP(r!)" "STRT(s!)" "WAIT(w!)" "HOLD(h!)" "IDEA(i!)" "|" "DONE(d!)" "KILL(k!)")
+            (sequence "[ ](T!)" "[-](S!)" "[?](W!)" "|" "[X](D!)")
+            (sequence "|" "OKAY(o!)" "YES(y!)" "NO(n!)")))
+    (setq org-hide-emphasis-markers t))
+
+  (use-package org-roam
+    :config
+    (setq org-roam-database-connector 'sqlite-builtin)
+    (org-roam-db-autosync-mode)
+    (setq org-roam-directory (file-truename "~/org")))
+  (use-package org-download)
+
+  (use-package org-bullets
+    :config
+    (add-hook 'org-mode-hook (lambda () (org-bullets-mode 1))))
+
+  (use-package toc-org ; auto-table of contents
+    :hook (org-mode . toc-org-enable)
+    :config
+    (setq toc-org-hrefify-default "gh"))
+
+    ;; (defadvice +org-inhibit-scrolling-a (fn &rest args)
+    ;;             "Prevent the jarring scrolling that occurs when the-ToC is regenerated."
+    ;;             :around #'toc-org-insert-toc
+    ;;             (let ((p (set-marker (make-marker) (point)))
+    ;;                   (s (window-start)))
+    ;;               (prog1 (apply fn args)
+    ;;                 (goto-char p)
+    ;;                 (set-window-start nil s t)
+    ;;                 (set-marker p nil)))))
+
+  (defun +org--toggle-inline-images-in-subtree (&optional beg end refresh)
+    "Refresh inline image previews in the current heading/tree."
+    (let* ((beg (or beg
+                    (if (org-before-first-heading-p)
+                        (save-excursion (point-min))
+                      (save-excursion (org-back-to-heading) (point)))))
+           (end (or end
+                    (if (org-before-first-heading-p)
+                        (save-excursion (org-next-visible-heading 1) (point))
+                      (save-excursion (org-end-of-subtree) (point)))))
+           (overlays (cl-remove-if-not (lambda (ov) (overlay-get ov 'org-image-overlay))
+                                       (ignore-errors (overlays-in beg end)))))
+      (dolist (ov overlays nil)
+        (delete-overlay ov)
+        (setq org-inline-image-overlays (delete ov org-inline-image-overlays)))
+      (when (or refresh (not overlays))
+        (org-display-inline-images t t beg end)
+        t)))
+
+  (defun +org--insert-item (direction)
+    (let ((context (org-element-lineage
+                    (org-element-context)
+                    '(table table-row headline inlinetask item plain-list)
+                    t)))
+      (pcase (org-element-type context)
+        ;; Add a new list item (carrying over checkboxes if necessary)
+        ((or `item `plain-list)
+         (let ((orig-point (point)))
+           ;; Position determines where org-insert-todo-heading and `org-insert-item'
+           ;; insert the new list item.
+           (if (eq direction 'above)
+               (org-beginning-of-item)
+             (end-of-line))
+           (let* ((ctx-item? (eq 'item (org-element-type context)))
+                  (ctx-cb (org-element-property :contents-begin context))
+                  ;; Hack to handle edge case where the point is at the
+                  ;; beginning of the first item
+                  (beginning-of-list? (and (not ctx-item?)
+                                           (= ctx-cb orig-point)))
+                  (item-context (if beginning-of-list?
+                                    (org-element-context)
+                                  context))
+                  ;; Horrible hack to handle edge case where the
+                  ;; line of the bullet is empty
+                  (ictx-cb (org-element-property :contents-begin item-context))
+                  (empty? (and (eq direction 'below)
+                               ;; in case contents-begin is nil, or contents-begin
+                               ;; equals the position end of the line, the item is
+                               ;; empty
+                               (or (not ictx-cb)
+                                   (= ictx-cb
+                                      (1+ (point))))))
+                  (pre-insert-point (point)))
+             ;; Insert dummy content, so that `org-insert-item'
+             ;; inserts content below this item
+             (when empty?
+               (insert " "))
+             (org-insert-item (org-element-property :checkbox context))
+             ;; Remove dummy content
+             (when empty?
+               (delete-region pre-insert-point (1+ pre-insert-point))))))
+        ;; Add a new table row
+        ((or `table `table-row)
+         (pcase direction
+           ('below (save-excursion (org-table-insert-row t))
+                   (org-table-next-row))
+           ('above (save-excursion (org-shiftmetadown))
+                   (+org/table-previous-row))))
+
+        ;; Otherwise, add a new heading, carrying over any todo state, if
+        ;; necessary.
+        (_
+         (let ((level (or (org-current-level) 1)))
+           ;; I intentionally avoid `org-insert-heading' and the like because they
+           ;; impose unpredictable whitespace rules depending on the cursor
+           ;; position. It's simpler to express this command's responsibility at a
+           ;; lower level than work around all the quirks in org's API.
+           (pcase direction
+             (`below
+              (let (org-insert-heading-respect-content)
+                (goto-char (line-end-position))
+                (org-end-of-subtree)
+                (insert "\n" (make-string level ?*) " ")))
+             (`above
+              (org-back-to-heading)
+              (insert (make-string level ?*) " ")
+              (save-excursion (insert "\n"))))
+           (run-hooks 'org-insert-heading-hook)
+           (when-let* ((todo-keyword (org-element-property :todo-keyword context))
+                       (todo-type    (org-element-property :todo-type context)))
+             (org-todo
+              (cond ((eq todo-type 'done)
+                     ;; Doesn't make sense to create more "DONE" headings
+                     (car (+org-get-todo-keywords-for todo-keyword)))
+                    (todo-keyword)
+                    ('todo)))))))
+
+      (when (org-invisible-p)
+        (org-show-hidden-entry))
+      (when (and (bound-and-true-p evil-local-mode)
+                 (not (evil-emacs-state-p)))
+        (evil-insert 1))))
+
+    ;;;###autoload
+  (defun +org-get-todo-keywords-for (&optional keyword)
+    "Returns the list of todo keywords that KEYWORD belongs to."
+    (when keyword
+      (cl-loop for (type . keyword-spec)
+               in (cl-remove-if-not #'listp org-todo-keywords)
+               for keywords =
+               (mapcar (lambda (x) (if (string-match "^\\([^(]+\\)(" x)
+                                       (match-string 1 x)
+                                     x))
+                       keyword-spec)
+               if (eq type 'sequence)
+               if (member keyword keywords)
+               return keywords)))
+
+
+  ;;
+    ;;; Modes
+
+    ;;;###autoload
+  (define-minor-mode +org-pretty-mode
+    "Hides emphasis markers and toggles pretty entities."
+    :init-value nil
+    :lighter " *"
+    :group 'evil-org
+    (setq org-hide-emphasis-markers +org-pretty-mode)
+    (org-toggle-pretty-entities)
+    (with-silent-modifications
+      ;; In case the above un-align tables
+      (org-table-map-tables 'org-table-align t)))
+
+
+  ;;
+    ;;; Commands
+
+    ;;;###autoload
+  (defun +org/return ()
+    "Call `org-return' then indent (if `electric-indent-mode' is on)."
+    (interactive)
+    (org-return electric-indent-mode))
+
+    ;;;###autoload
+  (defun +org/dwim-at-point (&optional arg)
+    "Do-what-I-mean at point.
+
+    If on a:
+    - checkbox list item or todo heading: toggle it.
+    - citation: follow it
+    - headline: cycle ARCHIVE subtrees, toggle latex fragments and inline images in
+      subtree; update statistics cookies/checkboxes and ToCs.
+    - clock: update its time.
+    - footnote reference: jump to the footnote's definition
+    - footnote definition: jump to the first reference of this footnote
+    - timestamp: open an agenda view for the time-stamp date/range at point.
+    - table-row or a TBLFM: recalculate the table's formulas
+    - table-cell: clear it and go into insert mode. If this is a formula cell,
+      recaluclate it instead.
+    - babel-call: execute the source block
+    - statistics-cookie: update it.
+    - src block: execute it
+    - latex fragment: toggle it.
+    - link: follow it
+    - otherwise, refresh all inline images in current tree."
+    (interactive "P")
+    (if (button-at (point))
+        (call-interactively #'push-button)
+      (let* ((context (org-element-context))
+             (type (org-element-type context)))
+        ;; skip over unimportant contexts
+        (while (and context (memq type '(verbatim code bold italic underline strike-through subscript superscript)))
+          (setq context (org-element-property :parent context)
+                type (org-element-type context)))
+        (pcase type
+          ((or `citation `citation-reference)
+           (org-cite-follow context arg))
+
+          (`headline
+           (cond ((memq (bound-and-true-p org-goto-map)
+                        (current-active-maps))
+                  (org-goto-ret))
+                 ((and (fboundp 'toc-org-insert-toc)
+                       (member "TOC" (org-get-tags)))
+                  (toc-org-insert-toc)
+                  (message "Updating table of contents"))
+                 ((string= "ARCHIVE" (car-safe (org-get-tags)))
+                  (org-force-cycle-archived))
+                 ((or (org-element-property :todo-type context)
+                      (org-element-property :scheduled context))
+                  (org-todo
+                   (if (eq (org-element-property :todo-type context) 'done)
+                       (or (car (+org-get-todo-keywords-for (org-element-property :todo-keyword context)))
+                           'todo)
+                     'done))))
+           ;; Update any metadata or inline previews in this subtree
+           (org-update-checkbox-count)
+           (org-update-parent-todo-statistics)
+           (when (and (fboundp 'toc-org-insert-toc)
+                      (member "TOC" (org-get-tags)))
+             (toc-org-insert-toc)
+             (message "Updating table of contents"))
+           (let* ((beg (if (org-before-first-heading-p)
+                           (line-beginning-position)
+                         (save-excursion (org-back-to-heading) (point))))
+                  (end (if (org-before-first-heading-p)
+                           (line-end-position)
+                         (save-excursion (org-end-of-subtree) (point))))
+                  (overlays (ignore-errors (overlays-in beg end)))
+                  (latex-overlays
+                   (cl-find-if (lambda (o) (eq (overlay-get o 'org-overlay-type) 'org-latex-overlay))
+                               overlays))
+                  (image-overlays
+                   (cl-find-if (lambda (o) (overlay-get o 'org-image-overlay))
+                               overlays)))
+             (+org--toggle-inline-images-in-subtree beg end)
+             (if (or image-overlays latex-overlays)
+                 (org-clear-latex-preview beg end)
+               (org--latex-preview-region beg end))))
+
+          (`clock (org-clock-update-time-maybe))
+
+          (`footnote-reference
+           (org-footnote-goto-definition (org-element-property :label context)))
+
+          (`footnote-definition
+           (org-footnote-goto-previous-reference (org-element-property :label context)))
+
+          ((or `planning `timestamp)
+           (org-follow-timestamp-link))
+
+          ((or `table `table-row)
+           (if (org-at-TBLFM-p)
+               (org-table-calc-current-TBLFM)
+             (ignore-errors
+               (save-excursion
+                 (goto-char (org-element-property :contents-begin context))
+                 (org-call-with-arg 'org-table-recalculate (or arg t))))))
+
+          (`table-cell
+           (org-table-blank-field)
+           (org-table-recalculate arg)
+           (when (and (string-empty-p (string-trim (org-table-get-field)))
+                      (bound-and-true-p evil-local-mode))
+             (evil-change-state 'insert)))
+
+          (`babel-call
+           (org-babel-lob-execute-maybe))
+
+          (`statistics-cookie
+           (save-excursion (org-update-statistics-cookies arg)))
+
+          ((or `src-block `inline-src-block)
+           (org-babel-execute-src-block arg))
+
+          ((or `latex-fragment `latex-environment)
+           (org-latex-preview arg))
+
+          (`link
+           (let* ((lineage (org-element-lineage context '(link) t))
+                  (path (org-element-property :path lineage)))
+             (if (or (equal (org-element-property :type lineage) "img")
+                     (and path (image-type-from-file-name path)))
+                 (+org--toggle-inline-images-in-subtree
+                  (org-element-property :begin lineage)
+                  (org-element-property :end lineage))
+               (org-open-at-point arg))))
+
+          ((guard (org-element-property :checkbox (org-element-lineage context '(item) t)))
+           (org-toggle-checkbox))
+
+          (`paragraph
+           (+org--toggle-inline-images-in-subtree))
+
+          (_
+           (if (or (org-in-regexp org-ts-regexp-both nil t)
+                   (org-in-regexp org-tsr-regexp-both nil  t)
+                   (org-in-regexp org-link-any-re nil t))
+               (call-interactively #'org-open-at-point)
+             (+org--toggle-inline-images-in-subtree
+              (org-element-property :begin context)
+              (org-element-property :end context))))))))
+
+    ;;;###autoload
+  (defun +org/shift-return (&optional arg)
+    "Insert a literal newline, or dwim in tables.
+    Executes `org-table-copy-down' if in table."
+    (interactive "p")
+    (if (org-at-table-p)
+        (org-table-copy-down arg)
+      (org-return nil arg)))
+
+
+  ;; I use these instead of `org-insert-item' or `org-insert-heading' because they
+  ;; impose bizarre whitespace rules depending on cursor location and many
+  ;; settings. These commands have a much simpler responsibility.
+    ;;;###autoload
+  (defun +org/insert-item-below (count)
+    "Inserts a new heading, table cell or item below the current one."
+    (interactive "p")
+    (dotimes (_ count) (+org--insert-item 'below)))
+
+    ;;;###autoload
+  (defun +org/insert-item-above (count)
+    "Inserts a new heading, table cell or item above the current one."
+    (interactive "p")
+    (dotimes (_ count) (+org--insert-item 'above)))
+
+
+    ;;;###autoload
+  (defun +org/toggle-last-clock (arg)
+    "Toggles last clocked item.
+
+    Clock out if an active clock is running (or cancel it if prefix ARG is non-nil).
+
+    If no clock is active, then clock into the last item. See `org-clock-in-last' to
+    see how ARG affects this command."
+    (interactive "P")
+    (require 'org-clock)
+    (cond ((org-clocking-p)
+           (if arg
+               (org-clock-cancel)
+             (org-clock-out)))
+          ((and (null org-clock-history)
+                (or (org-on-heading-p)
+                    (org-at-item-p))
+                (y-or-n-p "No active clock. Clock in on current item?"))
+           (org-clock-in))
+          ((org-clock-in-last arg))))
+
+
+    ;;;###autoload
+  (defun doom-region-active-p ()
+    "Return non-nil if selection is active.
+  Detects evil visual mode as well."
+    (declare (side-effect-free t))
+    (or (use-region-p)
+        (and (bound-and-true-p evil-local-mode)
+             (evil-visual-state-p))))
+
+
+    ;;;###autoload
+  (defun +org/reformat-at-point ()
+    "Reformat the element at point.
+
+    If in an org src block, invokes `+format/org-block' if the ':editor format'
+      module is enabled.
+    If in an org table, realign the cells with `org-table-align'.
+    Otherwise, falls back to `org-fill-paragraph' to reflow paragraphs."
+    (interactive)
+    (let ((element (org-element-at-point)))
+      (cond ((doom-region-active-p)
+             ;; TODO Perform additional formatting?
+             ;; (save-restriction
+             ;;   (narrow-to-region beg end)
+             ;;   (org-table-recalculate t)
+             ;;   (org-table-map-tables #'org-table-align)
+             ;;   (org-align-tags t)
+             ;;   (org-update-statistics-cookies t)
+             ;;   ...)
+             (if (modulep! :editor format)
+                 (call-interactively #'+format/org-blocks-in-region)
+               (message ":editor format is disabled, skipping reformatting of org-blocks")))
+            ((org-in-src-block-p nil element)
+             (unless (modulep! :editor format)
+               (user-error ":editor format module is disabled, ignoring reformat..."))
+             (call-interactively #'+format/org-block))
+            ((org-at-table-p)
+             (save-excursion (org-table-align)))
+            ((call-interactively #'org-fill-paragraph)))))
+
+
+    ;;; Folds
+    ;;;###autoload
+  (defalias #'+org/toggle-fold #'+org-cycle-only-current-subtree-h)
+
+    ;;;###autoload
+  (defun +org/open-fold ()
+    "Open the current fold (not but its children)."
+    (interactive)
+    (+org/toggle-fold t))
+
+    ;;;###autoload
+  (defalias #'+org/close-fold #'outline-hide-subtree)
+
+    ;;;###autoload
+  (defun +org/close-all-folds (&optional level)
+    "Close all folds in the buffer (or below LEVEL)."
+    (interactive "p")
+    (outline-hide-sublevels (or level 1)))
+
+    ;;;###autoload
+  (defun +org/open-all-folds (&optional level)
+    "Open all folds in the buffer (or up to LEVEL)."
+    (interactive "P")
+    (if (integerp level)
+        (outline-hide-sublevels level)
+      (outline-show-all)))
+
+  (defun +org--get-foldlevel ()
+    (let ((max 1))
+      (save-restriction
+        (narrow-to-region (window-start) (window-end))
+        (save-excursion
+          (goto-char (point-min))
+          (while (not (eobp))
+            (org-next-visible-heading 1)
+            (when (memq (get-char-property (line-end-position)
+                                           'invisible)
+                        '(outline org-fold-outline))
+              (let ((level (org-outline-level)))
+                (when (> level max)
+                  (setq max level))))))
+        max)))
+
+    ;;;###autoload
+  (defun +org/show-next-fold-level (&optional count)
+    "Decrease the fold-level of the visible area of the buffer. This unfolds
+    another level of headings on each invocation."
+    (interactive "p")
+    (let ((new-level (+ (+org--get-foldlevel) (or count 1))))
+      (outline-hide-sublevels new-level)
+      (message "Folded to level %s" new-level)))
+
+    ;;;###autoload
+  (defun +org/hide-next-fold-level (&optional count)
+    "Increase the global fold-level of the visible area of the buffer. This folds
+    another level of headings on each invocation."
+    (interactive "p")
+    (let ((new-level (max 1 (- (+org--get-foldlevel) (or count 1)))))
+      (outline-hide-sublevels new-level)
+      (message "Folded to level %s" new-level)))
+
+
+  ;;
+    ;;; Hooks
+
+    ;;;###autoload
+  (defun +org-indent-maybe-h ()
+    "Indent the current item (header or item), if possible.
+    Made for `org-tab-first-hook' in evil-mode."
+    (interactive)
+    (cond ((not (and (bound-and-true-p evil-local-mode)
+                     (evil-insert-state-p)))
+           nil)
+          ((and (bound-and-true-p org-cdlatex-mode)
+                (or (org-inside-LaTeX-fragment-p)
+                    (org-inside-latex-macro-p)))
+           nil)
+          ((org-at-item-p)
+           (if (eq this-command 'org-shifttab)
+               (org-outdent-item-tree)
+             (org-indent-item-tree))
+           t)
+          ((org-at-heading-p)
+           (ignore-errors
+             (if (eq this-command 'org-shifttab)
+                 (org-promote)
+               (org-demote)))
+           t)
+          ((org-in-src-block-p t)
+           (save-window-excursion
+             (org-babel-do-in-edit-buffer
+              (call-interactively #'indent-for-tab-command)))
+           t)
+          ((and (save-excursion
+                  (skip-chars-backward " \t")
+                  (bolp))
+                (org-in-subtree-not-table-p))
+           (call-interactively #'tab-to-tab-stop)
+           t)))
+
+    ;;;###autoload
+  (defun +org-yas-expand-maybe-h ()
+    "Expand a yasnippet snippet, if trigger exists at point or region is active.
+    Made for `org-tab-first-hook'."
+    (when (and (modulep! :editor snippets)
+               (require 'yasnippet nil t)
+               (bound-and-true-p yas-minor-mode))
+      (and (let ((major-mode (cond ((org-in-src-block-p t)
+                                    (org-src-get-lang-mode (org-eldoc-get-src-lang)))
+                                   ((org-inside-LaTeX-fragment-p)
+                                    'latex-mode)
+                                   (major-mode)))
+                 (org-src-tab-acts-natively nil) ; causes breakages
+                 ;; Smart indentation doesn't work with yasnippet, and painfully slow
+                 ;; in the few cases where it does.
+                 (yas-indent-line 'fixed))
+             (cond ((and (or (not (bound-and-true-p evil-local-mode))
+                             (evil-insert-state-p)
+                             (evil-emacs-state-p))
+                         (or (and (bound-and-true-p yas--tables)
+                                  (gethash major-mode yas--tables))
+                             (progn (yas-reload-all) t))
+                         (yas--templates-for-key-at-point))
+                    (yas-expand)
+                    t)
+                   ((use-region-p)
+                    (yas-insert-snippet)
+                    t)))
+           ;; HACK Yasnippet breaks org-superstar-mode because yasnippets is
+           ;;      overzealous about cleaning up overlays.
+           (when (bound-and-true-p org-superstar-mode)
+             (org-superstar-restart)))))
+
+    ;;;###autoload
+  (defun +org-cycle-only-current-subtree-h (&optional arg)
+    "Toggle the local fold at the point, and no deeper.
+    `org-cycle's standard behavior is to cycle between three levels: collapsed,
+    subtree and whole document. This is slow, especially in larger org buffer. Most
+    of the time I just want to peek into the current subtree -- at most, expand
+    ,*only* the current subtree.
+
+    All my (performant) foldings needs are met between this and `org-show-subtree'
+    (on zO for evil users), and `org-cycle' on shift-TAB if I need it."
+    (interactive "P")
+    (unless (or (eq this-command 'org-shifttab)
+                (and (bound-and-true-p org-cdlatex-mode)
+                     (or (org-inside-LaTeX-fragment-p)
+                         (org-inside-latex-macro-p))))
+      (save-excursion
+        (org-beginning-of-line)
+        (let (invisible-p)
+          (when (and (org-at-heading-p)
+                     (or org-cycle-open-archived-trees
+                         (not (member org-archive-tag (org-get-tags))))
+                     (or (not arg)
+                         (setq invisible-p
+                               (memq (get-char-property (line-end-position)
+                                                        'invisible)
+                                     '(outline org-fold-outline)))))
+            (unless invisible-p
+              (setq org-cycle-subtree-status 'subtree))
+            (org-cycle-internal-local)
+            t)))))
+
+  ;;;###autoload
+  (defun doom-temp-buffer-p (buf)
+    "Returns non-nil if BUF is temporary."
+    (equal (substring (buffer-name buf) 0 1) " "))
+
+    ;;;###autoload
+  (defun +org-make-last-point-visible-h ()
+    "Unfold subtree around point if saveplace places us in a folded region."
+    (and (not org-inhibit-startup)
+         (not org-inhibit-startup-visibility-stuff)
+         ;; Must be done on a timer because `org-show-set-visibility' (used by
+         ;; `org-reveal') relies on overlays that aren't immediately available
+         ;; when `org-mode' first initializes.
+         (let ((buf (current-buffer)))
+           (unless (doom-temp-buffer-p buf)
+             (run-at-time 0.1 nil (lambda ()
+                                    (when (buffer-live-p buf)
+                                      (with-current-buffer buf
+                                        (org-reveal '(4))))))))))
+
+    ;;;###autoload
+  (defun +org-remove-occur-highlights-h ()
+    "Remove org occur highlights on ESC in normal mode."
+    (when org-occur-highlights
+      (org-remove-occur-highlights)
+      t))
+
+#+end_src
+
+* Origami
+#+begin_src emacs-lisp
+  (use-package origami)
+  (use-package lsp-origami
+    :config
+    (add-hook 'lsp-after-open-hook #'lsp-origami-try-enable))
+#+end_src
+
+
+* Page-break-lines
+#+begin_src emacs-lisp
+  (use-package page-break-lines
+    :config
+    (global-page-break-lines-mode))
+#+end_src
+
+* Parinfer-rust-mode
+#+begin_src emacs-lisp
+    (use-package parinfer-rust-mode
+      :hook emacs-lisp-mode
+      :config)
+#+end_src
+
+* Persistent-scratch
+#+begin_src emacs-lisp
+  (use-package persistent-scratch
+    :config
+    (persistent-scratch-setup-default))
+#+end_src
+
+* Projectile and persp-mode
+#+begin_src emacs-lisp
+  (use-package persp-mode
+    :config
+    (setq persp-auto-save-opt 0)
+    (persp-mode))
+  (with-eval-after-load 'persp-mode
+    (load (expand-file-name "projectile-persp.el" user-emacs-directory))
+    (add-hook 'persp-mode-projectile-bridge-mode-hook
+              #'(lambda ()
+                  (if persp-mode-projectile-bridge-mode
+                      (persp-mode-projectile-bridge-find-perspectives-for-all-buffers)
+                    (persp-mode-projectile-bridge-kill-perspectives))))
+    (add-hook 'on-first-input-hook
+              #'(lambda ()
+                  (persp-mode-projectile-bridge-mode 1))
+              t))
+  ;;     (persp-mode-projectile-bridge-mode 1))
+  (use-package projectile
+    :config
+    (setq projectile-project-search-path '(("~/projects" . 2) "~/.config")
+          projectile-enable-caching t))
+  (with-eval-after-load 'projectile
+    (projectile-mode 1)
+    (setq projectile-git-submodule-command nil))
+
+  ;; (eval-when-compile
+  ;;   (my//clone "Bad-ptr/persp-mode.el")
+  ;;   (my//clone "bbatsov/projectile"))
+  ;; (add-el-clone "persp-mode")
+  ;; (add-el-clone "projectile")
+  ;; (use-package persp-mode
+  ;;   :config
+  ;;   (persp-mode))
+
+  ;; (with-eval-after-load 'persp-mode
+
+  ;;   (load (expand-file-name "lib/projectile-persp.el" user-emacs-directory))
+  ;;   (add-hook 'persp-mode-projectile-bridge-mode-hook
+  ;;             #'(lambda ()
+  ;;                 (if persp-mode-projectile-bridge-mode
+  ;;                     (persp-mode-projectile-bridge-find-perspectives-for-all-buffers)
+  ;;                   (persp-mode-projectile-bridge-kill-perspectives))))
+  ;;   (add-hook 'pre-command-hook
+  ;;             #'(lambda ()
+  ;;                 (persp-mode-projectile-bridge-mode 1))
+  ;;             t))
+
+  ;; (use-package projectile
+  ;;   :config
+  ;;   (setq projectile-project-search-path '(("~/projects" . 2) "~/.config")
+  ;;         projectile-enable-caching t))
+  ;; ;; (add-hook 'after-init-hook 'projectile-mode))
+
+  ;; (with-delayed-execution
+  ;;   (with-eval-after-load 'projectile
+  ;;     (projectile-mode)))
+#+end_src
+
+* Pulsar
+#+begin_src emacs-lisp
+  (use-package pulsar
+    :config
+    (setq pulsar-pulse t)
+    (setq pulsar-delay 0.055)
+    (setq pulsar-iterations 10)
+    (setq pulsar-face 'pulsar-magenta)
+    (setq pulsar-highlight-face 'pulsar-yellow)
+    (add-hook 'minibuffer-setup-hook #'pulsar-pulse-line)
+    ;; integration with the `consult' package:
+    (add-hook 'consult-after-jump-hook #'pulsar-recenter-top)
+    (add-hook 'consult-after-jump-hook #'pulsar-reveal-entry)
+
+    ;; integration with the built-in `imenu':
+    (add-hook 'imenu-after-jump-hook #'pulsar-recenter-top)
+    (add-hook 'imenu-after-jump-hook #'pulsar-reveal-entry)
+    (pulsar-global-mode 1))
+#+end_src
+
+* Rainbow
+#+begin_src emacs-lisp
+  (use-package rainbow-delimiters
+    :config
+    (add-hook 'prog-mode-hook #'rainbow-delimiters-mode))
+
+  ;;;; Rainbow mode for colour previewing (rainbow-mode.el)
+  (use-package rainbow-mode
+    :config
+    (setq rainbow-ansi-colors nil)
+    (setq rainbow-x-colors nil)
+
+    (defun prot/rainbow-mode-in-themes ()
+      (when-let ((file (buffer-file-name))
+                 ((derived-mode-p 'emacs-lisp-mode))
+                 ((string-match-p "-theme" file)))
+        (rainbow-mode 1)))
+    :bind ( :map ctl-x-x-map
+            ("c" . rainbow-mode)) ; C-x x c
+    :hook (emacs-lisp-mode . prot/rainbow-mode-in-themes))
+#+end_src
+
+* s
+#+begin_src emacs-lisp
+(use-package ht)
+(use-package s
+  :after ht)
+#+end_src
+
+* Smartparens
+#+begin_src emacs-lisp
+(use-package smartparens
+  :hook (prog-mode text-mode markdown-mode) ;; add `smartparens-mode` to these hooks
+  :config
+  ;; load default config
+  (require 'smartparens-config))
+#+end_src
+
+* Spacious-padding
+#+begin_src emacs-lisp
+  ;;;; Increase padding of windows/frames
+;; <https://protesilaos.com/codelog/2023-06-03-emacs-spacious-padding/>.
+  (use-package spacious-padding
+    :if (display-graphic-p)
+    :hook (after-init . spacious-padding-mode)
+    :bind ("<f8>" . spacious-padding-mode)
+    :config
+    ;; These are the defaults, but I keep it here for visiibility.
+    (setq spacious-padding-widths
+          '( :internal-border-width 30
+             :header-line-width 4
+             :mode-line-width 6
+             :tab-width 4
+             :right-divider-width 30
+             :scroll-bar-width 8
+             :left-fringe-width 20
+             :right-fringe-width 20))
+
+    ;; (setq spacious-padding-subtle-mode-line
+    ;;       `( :mode-line-active ,(if (or (eq prot-emacs-load-theme-family 'modus)
+    ;;                                     (eq prot-emacs-load-theme-family 'standard))
+    ;;                                 'default
+    ;;                               'help-key-binding)
+    ;;          :mode-line-inactive window-divider))
+
+    ;; Read the doc string of `spacious-padding-subtle-mode-line' as
+    ;; it is very flexible.
+    (setq spacious-padding-subtle-mode-line '(:mode-line-active "#37f499" :mode-line-inactive shadow)))
+#+end_src
+
+* Tempel
+#+begin_src emacs-lisp
+  ;; Configure Tempel
+  (use-package tempel
+    ;; Require trigger prefix before template name when completing.
+    ;; :custom
+    ;; (tempel-trigger-prefix "<")
+
+    :bind (("M-+" . tempel-complete) ;; Alternative tempel-expand
+           ("M-*" . tempel-insert))
+
+    :config
+
+    ;; Setup completion at point
+    (defun tempel-setup-capf ()
+      ;; Add the Tempel Capf to `completion-at-point-functions'.
+      ;; `tempel-expand' only triggers on exact matches. Alternatively use
+      ;; `tempel-complete' if you want to see all matches, but then you
+      ;; should also configure `tempel-trigger-prefix', such that Tempel
+      ;; does not trigger too often when you don't expect it. NOTE: We add
+      ;; `tempel-expand' *before* the main programming mode Capf, such
+      ;; that it will be tried first.
+      (setq-local completion-at-point-functions
+                  (cons #'tempel-expand
+                        completion-at-point-functions)))
+
+    ;; Optionally make the Tempel templates available to Abbrev,
+    ;; either locally or globally. `expand-abbrev' is bound to C-x '.
+    ;; (add-hook 'prog-mode-hook #'tempel-abbrev-mode)
+    ;; (global-tempel-abbrev-mode)
+    (add-hook 'conf-mode-hook 'tempel-setup-capf)
+    (add-hook 'prog-mode-hook 'tempel-setup-capf)
+    (add-hook 'text-mode-hook 'tempel-setup-capf))
+
+
+
+  ;; Optional: Add tempel-collection.
+  ;; The package is young and doesn't have comprehensive coverage.
+  (use-package tempel-collection)
+#+end_src
+
+* Transient
+#+begin_src emacs-lisp
+(use-package transient)
+#+end_src
+
+* Undo-fu
+#+begin_src emacs-lisp
+  (use-package undo-fu
+    :config
+    (setq undo-limit 67108864) ; 64mb.
+    (setq undo-strong-limit 100663296) ; 96mb.
+    (setq undo-outer-limit 1006632960)) ; 960mb.)
+
+  (use-package undo-fu-session
+    :config
+    (undo-fu-session-global-mode))
+#+end_src
+
+* Vertico
+#+begin_src emacs-lisp
+  (use-package vertico
+    :custom
+    (vertico-cycle t)
+    (vertico-count 20)
+    (vertico-resize nil)
+    :config
+    (vertico-mode)
+    (savehist-mode)
+    (setq ido-mode nil))
+#+end_src
+
+* Vterm
+#+begin_src emacs-lisp
+(use-package vterm)
+(setq vterm-eval-cmds '(("find-file" find-file)
+                        ("message" message)
+                        ("vterm-clear-scrollback" vterm-clear-scrollback)
+                        ("dired" dired)
+                        ("ediff-files" ediff-files)))
+
+
+(use-package multi-vterm
+  :after evil
+  ;; :hook on-first-buffer-hook
+  :config
+  (add-hook 'vterm-mode-hook
+            (lambda ())
+            (setq-local evil-insert-state-cursor 'box)
+            (evil-insert-state))
+  (define-key vterm-mode-map [return]                      #'vterm-send-return)
+
+  (setq vterm-timer-delay 0.01)
+  (setq vterm-keymap-exceptions nil)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-e")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-f")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-a")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-v")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-b")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-w")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-u")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-d")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-n")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-m")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-p")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-j")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-k")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-r")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-t")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-g")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-c")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-SPC")    #'vterm--self-insert)
+  (evil-define-key 'normal vterm-mode-map (kbd "C-d")      #'vterm--self-insert)
+  (evil-define-key 'normal vterm-mode-map (kbd ",c")       #'multi-vterm)
+  (evil-define-key 'normal vterm-mode-map (kbd ",n")       #'multi-vterm-next)
+  (evil-define-key 'normal vterm-mode-map (kbd ",p")       #'multi-vterm-prev)
+  (evil-define-key 'normal vterm-mode-map (kbd "i")        #'evil-insert-resume)
+  (evil-define-key 'normal vterm-mode-map (kbd "o")        #'evil-insert-resume)
+  (evil-define-key 'normal vterm-mode-map (kbd "<return>") #'evil-insert-resume))
+#+end_src
+
+* Wakatime
+#+begin_src emacs-lisp
+  (use-package wakatime-mode
+    :config
+    (global-wakatime-mode))
+#+end_src
+
+* Which-key
+#+begin_src emacs-lisp
+(use-package which-key
+    :hook (pre-command-hook . which-key-mode)
+    :config
+    (which-key-mode 1))
+#+end_src
+
+* Yasnippet
+#+begin_src emacs-lisp
+  (use-package yasnippet
+    :config
+    (yas-global-mode))
+  (use-package yasnippet-snippets)
+#+end_src
+
+
+* Languages
+
+** Tree-sitter
+#+begin_src emacs-lisp
+  (use-package treesit-auto
+    :custom
+    (treesit-auto-install 'prompt)
+    :config
+    (treesit-auto-add-to-auto-mode-alist 'all))
+#+end_src
+
+** Astro
+#+begin_src emacs-lisp
+  (use-package astro-ts-mode
+    :after treesit-auto
+    :config
+    (global-treesit-auto-mode)
+    (setq treesit-language-source-alist
+          '((astro "https://github.com/virchau13/tree-sitter-astro")
+            (css "https://github.com/tree-sitter/tree-sitter-css")
+            (tsx "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src")))
+    (let ((astro-recipe (make-treesit-auto-recipe
+                         :lang 'astro
+                         :ts-mode 'astro-ts-mode
+                         :url "https://github.com/virchau13/tree-sitter-astro"
+                         :revision "master"
+                         :source-dir "src")))
+      (add-to-list 'treesit-auto-recipe-list astro-recipe))
+    (setq auto-mode-alist
+          (append '((".*\\.astro\\'" . astro-ts-mode))
+                  auto-mode-alist)))
+
+
+  (with-eval-after-load 'apheleia
+   (add-to-list
+    'apheleia-formatters
+    '(prettier-astro npx "prettier" "--stdin-filepath" filepath "--parser=astro"
+                     (apheleia-formatters-indent "--use-tabs" "--tab-width" 'astro-ts-mode-indent-offset)))
+
+   (add-to-list 'apheleia-mode-alist '(astro-ts-mode . prettier-astro)))
+
+   
+#+end_src
+
+** Hush
+#+begin_src emacs-lisp
+  ;; Uncomment this to make defvar override previous values.
+  ;; (mapc #'unintern '(hush-keywords
+  ;;                    hush-mode-syntax-table
+  ;;                    hush-font-lock-keywords
+  ;;                    hush-font-lock
+  ;;                    hush-mode-map))
+
+  (defvar hush-keywords
+    '("let" "if" "then" "else" "elseif" "end" "for" "in" "do" "while" "function" "return"
+      "not" "and" "or" "true" "false" "nil" "break" "self"))
+
+  (defvar hush-mode-syntax-table
+    (with-syntax-table (copy-syntax-table)
+      ;; comment syntax: begins with "#", ends with "\n"
+      (modify-syntax-entry ?# "<")
+      (modify-syntax-entry ?\n ">")
+
+      ;; main string syntax: bounded by ' or "
+      (modify-syntax-entry ?\' "\"")
+      (modify-syntax-entry ?\" "\"")
+
+      ;; single-character binary operators: punctuation
+      (modify-syntax-entry ?+ ".")
+      (modify-syntax-entry ?- ".")
+      (modify-syntax-entry ?* ".")
+      (modify-syntax-entry ?/ ".")
+      (modify-syntax-entry ?% ".")
+      (modify-syntax-entry ?> ".")
+      (modify-syntax-entry ?< ".")
+      (modify-syntax-entry ?= ".")
+      (modify-syntax-entry ?! ".")
+
+      (syntax-table))
+    "`hush-mode' syntax table.")
+
+  (defvar hush-font-lock-keywords
+    (concat "\\<\\(" (regexp-opt hush-keywords) "\\)\\>" ))
+
+  (defvar hush-font-lock
+    `((,hush-font-lock-keywords . font-lock-keyword-face)))
+
+  (defun hush-font-lock-setup ()
+    "Set up Hush font lock."
+    (setq-local font-lock-defaults '((hush-font-lock) nil t)))
+
+  (defvar hush-mode-map (make-sparse-keymap) "The keymap for Hush scripts")
+  ;; (define-key hush-mode-map (kbd "C-c t") 'find-file)
+
+  (define-derived-mode hush-mode lua-mode "hush" ()
+    :syntax-table hush-mode-syntax-table
+    (setq-local comment-start "# "
+                comment-start-skip "##*[ \t]*"
+                comment-use-syntax t)
+    (hush-font-lock-setup))
+
+  (add-to-list 'auto-mode-alist '("\\.hsh\\'" . hush-mode))
+
+
+  ;; Babel:
+  (defun org-babel-execute:hush (body params)
+    "Execute a block of Hush code with org-babel."
+    (org-babel-eval "hush" body))
+#+end_src
+
+** Nix
+#+begin_src emacs-lisp
+  ;; (use-package lsp-nix
+  ;;   :after lsp-mode
+  ;;   :demand t
+  ;;   :custom
+  ;;   (lsp-nix-nil-formatter ["nixfmt"]))
+
+
+  (use-package nix-mode
+    :after lsp-mode
+    :hook (nix-mode . lsp-deferred))
+#+end_src
+
+** Rust
+#+begin_src emacs-lisp
+    (use-package rustic
+      :after s
+      :config
+      (setq rustic-format-on-save nil)
+      :custom
+      (rustic-cargo-use-last-stored-arguments t))
+#+end_src
+
+** Svelte
+#+begin_src emacs-lisp
+  (use-package svelte-mode)
+#+end_src
+
+** Tailwind
+#+begin_src emacs-lisp
+  (use-package lsp-tailwindcss
+    :after lsp-mode
+    :init
+    (setq lsp-tailwindcss-add-on-mode t)
+    :config
+    (add-to-list 'lsp-tailwindcss-major-modes 'astro-ts-mode))
+#+end_src
+
+** Typescript
+#+begin_src emacs-lisp
+  (use-package typescript-mode
+    :hook (typescript-mode . lsp-deferred)
+    :config
+    (setq auto-mode-alist
+          (append '((".*\\.ts\\'" . typescript-mode)))))
+#+end_src
+
+** Zig
+#+begin_src emacs-lisp
+  (use-package zig-mode
+    :config
+   (add-to-list 'auto-mode-alist '("\\.zig\\'" . zig-mode)))
+#+end_src

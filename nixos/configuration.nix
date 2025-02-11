@@ -18,7 +18,7 @@ in {
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  networking.hostName = "grasshopper"; # Define your hostname.
+  networking.hostName = "paranix"; # Define your hostname.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
 
   # Configure network proxy if necessary
@@ -29,7 +29,7 @@ in {
   networking.networkmanager.enable = true;
 
   # Set your time zone.
-  time.timeZone = "Europe/Oslo";
+  time.timeZone = "Asia/Kolkata";
 
   # Select internationalisation properties.
   i18n.defaultLocale = "en_US.UTF-8";
@@ -97,15 +97,15 @@ in {
   # services.xserver.libinput.enable = true;
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
-  users.users.rond = {
+  users.users.paradox = {
     isNormalUser = true;
-    description = "rond";
+    description = "paradox";
     extraGroups = [ "networkmanager" "wheel" ];
   };
 
   # Enable automatic login for the user.
   services.displayManager.autoLogin.enable = true;
-  services.displayManager.autoLogin.user = "rond";
+  services.displayManager.autoLogin.user = "paradox";
   services.fprintd.enable = true;
 
   # Install firefox.

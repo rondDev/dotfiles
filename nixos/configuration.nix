@@ -85,10 +85,13 @@ in {
 
   environment.systemPackages = with pkgs; [
     libva
+    fprintd
   ];
   environment.sessionVariables = {
   };
 
+  virtualisation.docker.enable = true;
+  virtualisation.docker.rootless.enable = true;
 
   # Enable touchpad support (enabled default in most desktopManager).
   # services.xserver.libinput.enable = true;
@@ -103,6 +106,7 @@ in {
   # Enable automatic login for the user.
   services.displayManager.autoLogin.enable = true;
   services.displayManager.autoLogin.user = "rond";
+  services.fprintd.enable = true;
 
   # Install firefox.
   programs.firefox.enable = true;

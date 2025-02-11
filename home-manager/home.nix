@@ -14,6 +14,9 @@
 
     # You can also split up your configuration and import pieces of it here:
     # ./nvim.nix
+    ./modules/git.nix
+    # ./modules/shell
+    # ./modules
   ];
 
   nixpkgs = {
@@ -47,9 +50,13 @@
   # Add stuff for your user as you see fit:
   # $ nix search wget
   home.packages = with pkgs; [ 
+    fh
+    fzf
     steam
     wget
     cachix
+    zig
+    cliphist
   ];
 
 
@@ -61,15 +68,22 @@
 
   wayland.windowManager.hyprland.enable = true;
 
-  wayland.windowManager.hyprland.settings = {
-    monitor = "Virtual-1,3440x1440@60,auto,1";
-    "$mod" = "SUPER";
-    bind = [
-      "$mod, Return, exec, kitty"
-    ];
-  };
+  # wayland.windowManager.hyprland.settings = {
+  #   monitor = "eDP-1,1600x900@60,auto,1";
+  #   "$mod" = "SUPER";
+  #   "$menu" = "wofi --show drun";
+  #   bind = [
+  #     "$mod, Return, exec, kitty"
+  #     "$mod, D, exec, $menu"
+  #   ];
+  # };
+
+  home.file."".text = ''
+
+  '';
 
   home.sessionVariables.NIXOS_OZONE_WL = "1";
+  services.cliphist.enable = true;
 
   # Nicely reload system units when changing configs
   systemd.user.startServices = "sd-switch";

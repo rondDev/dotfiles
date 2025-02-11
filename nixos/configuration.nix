@@ -18,7 +18,7 @@ in {
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  networking.hostName = "nixos"; # Define your hostname.
+  networking.hostName = "grasshopper"; # Define your hostname.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
 
   # Configure network proxy if necessary
@@ -69,7 +69,7 @@ in {
 
   services.qemuGuest.enable = true;
   services.spice-vdagentd.enable = true;
-  services.xserver.videoDrivers = mkDefault [ "nvidia" ];
+  # services.xserver.videoDrivers = mkDefault [ "nvidia" ];
   services.openssh.enable = true;
   hardware = {
     graphics = {
@@ -80,34 +80,13 @@ in {
       package32 = hypr-mesa.pkgsi686Linux.mesa.drivers;
        extraPackages = [ pkgs.vaapiVdpau ];
     };
-    nvidia = {
-      # open = mkDefault true;
-      open = false;
-    #   powerManagement.enable = true;
-    #   modesetting.enable = true;
-      package =  config.boot.kernelPackages.nvidiaPackages.beta;
-    };
   };
   security.polkit.enable = true;
 
-  boot.kernelParams = [ "nvidia-drm.fbdev=1" ];
-  boot.kernelModules = [ "nvidia" ];
   environment.systemPackages = with pkgs; [
     libva
   ];
   environment.sessionVariables = {
-    LIBVA_DRIVER_NAME = "nvidia";
-    WLR_NO_HARDWARE_CURSORS = "1";
-
-    # May cause Firefox crashes
-    GBM_BACKEND = "nvidia-drm";
-
-
-    # If you face problems with Discord windows not displaying or screen
-    # sharing not working in Zoom, remove or comment this:
-    __GLX_VENDOR_LIBRARY_NAME = "nvidia";
-
-    # AQ_DRM_DEVICES = "/dev/dri/card1";
   };
 
 
@@ -161,9 +140,6 @@ in {
   # };
 
   # List services that you want to enable:
-
-  # Enable the OpenSSH daemon.
-  # services.openssh.enable = true;
 
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];

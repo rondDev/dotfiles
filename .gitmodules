@@ -1,0 +1,6 @@
+[submodule "mbn"]
+	path = mbn
+	url = git@github.com:rondDev/mbn.git
+[submodule "config/mbn"]
+	path = config/mbn
+	url = git@github.com:rondDev/mbn.git

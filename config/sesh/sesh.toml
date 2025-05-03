@@ -1,0 +1,16 @@
+[default_session]
+startup_command = "~/.config/sesh/scripts/default"
+
+[[session]]
+name = "🏠Home"
+path = "~"
+
+# [[session]]
+# name = "🪴Evo"
+# path = "~/dev"
+# startup_script = "~/.config/sesh/scripts/s"
+
+[[session]]
+name = "⚙️ Dotfiles"
+path = "~/.dotfiles"
+startup_command = "m -c ':Telescope find_files'"

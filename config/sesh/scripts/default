@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+tmux new-window
+tmux rename-window "term"
+tmux last-window
+tmux rename-window "nvim"
+tmux send-keys "m ." Enter
+clear

@@ -1,0 +1,73 @@
+clear
+ssh 192.168.1.173
+exit
+cd dev
+clear
+npx sv create
+cd family_management/
+git init && git add -A && git commit -m "feat: initial commit"
+git init ; git add -A ; git commit -m "feat: initial commit"
+deno task dev --open
+ls
+clear
+ssh 192.168.1.83
+ssh 192.168.1.81
+ssh-copy-id -i ~/.ssh/id_ed25519.pub 192.168.1.81
+ssh-copy-id -i ~/.ssh/id_ed25519.pub 192.168.1.250
+ssh-copy-id -i ~/.ssh/id_ed25519.pub 192.168.1.173
+ssh 192.168.1.250
+ssh 192.168.1.81
+ssh 192.168.1.173
+ssh 192.168.1.81
+d
+ssh 192.168.1.81
+echo $env.PATH
+$env.EDITOR
+stty -a
+bash
+which mbn
+ln -s
+ln -s --help
+nvim ~/.local/bin/mbn
+chmod +x ~/.local/bin/mbn
+$env.EDITOR = "nvim"
+janet 
+cd dev
+cd janet-test/
+janet
+tmux
+nvim .
+janet init.janet
+./init.janet
+janet init.janet
+which jmp
+which jpm
+jpm install sh
+sudo jpm install sh
+ls
+ls -la
+janet init.janet
+nvim .
+janet init.janet
+command -v yay
+which yay
+type -t yay
+descripe yay
+describe -t yay
+describe  yay
+describe
+echo $shell
+echo $SHELL
+which --help
+which find yay
+which yay find
+which yay
+type yay
+which s
+yay fish
+chsh
+logout
+exit
+nu
+reboot
+exit

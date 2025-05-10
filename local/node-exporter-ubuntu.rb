@@ -5,7 +5,7 @@
 
 `tar xvf node_exporter-1.9.1.linux-amd64.tar.gz`
 
-`sudo mv node_exporter-0.18.1.linux-amd64 /opt/node_exporter`
+`sudo mv node_exporter-1.9.1.linux-amd64 /opt/node_exporter`
 `sudo chown -R node_exporter:node_exporter /opt/node_exporter`
 
 File.open('/etc/systemd/system/node_exporter.service', 'a+') do |file|

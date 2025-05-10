@@ -26,3 +26,4 @@ end
 
 `sudo systemctl daemon-reload`
 `sudo systemctl start node_exporter && sudo journalctl -f --unit node_exporter`
+`rm node_exporter-1.9.1.linux-amd64.tar.gz`

@@ -1,0 +1,93 @@
+# Add deno completions to search path
+if [[ ":$FPATH:" != *":/home/rond/.zsh/completions:"* ]]; then export FPATH="/home/rond/.zsh/completions:$FPATH"; fi
+export PATH="/home/rond/.local/bin:$PATH"
+export PATH="/home/rond/.cargo/bin:$PATH"
+export PATH="$PATH:/home/rond/.cargo/bin"
+export PATH="$PATH:/home/rond/.nimble/bin"
+export PATH="$PATH:/home/rond/.nix-profile/bin"
+export PATH="$PATH:/nix/var/nix/profiles/default/bin"
+export PATH="$PATH:/home/rond/.local/share/bob/nvim-bin"
+export PATH="$PATH:/home/rond/.tmuxifier/bin"
+export PATH="$PATH:/home/rond/.bun/bin"
+export PATH="$PATH:/home/rond/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/"
+export PATH="$PATH:/home/rond/.local/bin/platform-tools/"
+export PATH="$PATH:/home/rond/.config/herd-lite/bin/"
+export PATH="$PATH:/home/rond/.config/tmux/plugins/t-smart-tmux-session-manager/bin"
+export PATH="$PATH:/home/rond/.local/share/mise/shims/"
+export PATH="$PATH:/home/rond/.gems/bin"
+export GEM_HOME=$HOME/.gems
+export PATH=$PATH:$GEM_HOME/bin
+export PATH="$HOME/.local/share/gem/ruby/3.4.0/bin:$PATH"
+
+
+# Fix Delete Key
+bindkey "^[[3~" delete-char
+
+# Created by Zap installer
+[ -f "${XDG_DATA_HOME:-$HOME/.local/share}/zap/zap.zsh" ] && source "${XDG_DATA_HOME:-$HOME/.local/share}/zap/zap.zsh"
+plug "zsh-users/zsh-autosuggestions"
+plug "zap-zsh/supercharge"
+plug "zap-zsh/zap-prompt"
+plug "zsh-users/zsh-syntax-highlighting"
+plug 'twfksh/zsh-ssh-agent'
+plug "Aloxaf/fzf-tab"
+plug 'joshskidmore/zsh-fzf-history-search'
+
+LC_CTYPE=en_US.UTF-8
+LC_ALL=en_US.UTF-8
+
+alias nnn='~/bin/nnn -de' # -d for details and -e to open files in $VISUAL (for other options, see 'man nnn'...)
+alias dots="/usr/bin/git --git-dir=$HOME/dots/ --work-tree=$HOME"
+alias gs="git status"
+#-----
+export NNN_OPTS="H" # 'H' shows the hidden files. Same as option -H (so 'nnn -deH')
+# export NNN_OPTS="deH" # if you prefer to have all the options at the same place
+export LC_COLLATE="C" # hidden files on top
+export NNN_FIFO="/tmp/nnn.fifo" # temporary buffer for the previews
+export NNN_FCOLORS="AAAAE631BBBBCCCCDDDD9999" # feel free to change the colors
+export NNN_PLUG='p:preview-tui' # many other plugins are available here: https://github.com/jarun/nnn/tree/master/plugins
+export SPLIT='h' # to split Kitty vertically
+#-----
+n () # to cd on quit
+{
+    if [ -n "$NNNLVL" ] && [ "${NNNLVL:-0}" -ge 1 ]; then
+        echo "nnn is already running"
+        return
+    fi
+    export NNN_TMPFILE="${XDG_CONFIG_HOME:-$HOME/.config}/nnn/.lastd"
+    nnn "$@"
+    if [ -f "$NNN_TMPFILE" ]; then
+            . "$NNN_TMPFILE"
+            rm -f "$NNN_TMPFILE" > /dev/null
+    fi
+}
+
+# make perl happy
+LC_CTYPE=en_US.UTF-8
+LC_ALL=en_US.UTF-8
+
+
+
+# Example globally setting the prefix for Zap to git clone using an SSH key
+export ZAP_GIT_PREFIX="git@github.com:"
+
+eval "$(zoxide init zsh)"
+
+zsh-ssh-agent
+
+# Load and initialise completion system
+autoload -Uz compinit
+compinit
+
+# bun completions
+[ -s "/home/rond/.bun/_bun" ] && source "/home/rond/.bun/_bun"
+
+
+# BEGIN opam configuration
+# This is useful if you're using opam as it adds:
+#   - the correct directories to the PATH
+#   - auto-completion for the opam binary
+# This section can be safely removed at any time if needed.
+[[ ! -r '/home/rond/.opam/opam-init/init.zsh' ]] || source '/home/rond/.opam/opam-init/init.zsh' > /dev/null 2> /dev/null
+# END opam configuration
+. "/home/rond/.deno/env"

@@ -1,0 +1,207 @@
+;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
+
+;; Place your private configuration here! Remember, you do not need to run 'doom
+;; sync' after modifying this file!
+
+
+;; Some functionality uses this to identify you, e.g. GPG configuration, email
+;; clients, file templates and snippets. It is optional.
+;; (setq user-full-name "John Doe"
+;;       user-mail-address "john@doe.com")
+
+;; Doom exposes five (optional) variables for controlling fonts in Doom:
+;;
+;; - `doom-font' -- the primary font to use
+;; - `doom-variable-pitch-font' -- a non-monospace font (where applicable)
+;; - `doom-big-font' -- used for `doom-big-font-mode'; use this for
+;;   presentations or streaming.
+;; - `doom-symbol-font' -- for symbols
+;; - `doom-serif-font' -- for the `fixed-pitch-serif' face
+;;
+;; See 'C-h v doom-font' for documentation and more examples of what they
+;; accept. For example:
+;;
+(setq doom-font (font-spec :family "JetbrainsMono Nerd Font" :size 12))
+;;
+;; If you or Emacs can't find your font, use 'M-x describe-font' to look them
+;; up, `M-x eval-region' to execute elisp code, and 'M-x doom/reload-font' to
+;; refresh your font settings. If Emacs still can't find your font, it likely
+;; wasn't installed correctly. Font issues are rarely Doom issues!
+
+;; There are two ways to load a theme. Both assume the theme is installed and
+;; available. You can either set `doom-theme' or manually load a theme with the
+;; `load-theme' function. This is the default:
+;; (setq doom-theme 'doom-one)
+
+;; This determines the style of line numbers in effect. If set to `nil', line
+;; numbers are disabled. For relative line numbers, set this to `relative'.
+(setq display-line-numbers-type 'relative)
+
+;; If you use `org' and don't want your org files in the default location below,
+;; change `org-directory'. It must be set before org loads!
+(setq org-directory "~/org/")
+
+
+;; Whenever you reconfigure a package, make sure to wrap your config in an
+;; `after!' block, otherwise Doom's defaults may override your settings. E.g.
+;;
+;;   (after! PACKAGE
+;;     (setq x y))
+;;
+;; The exceptions to this rule:
+;;
+;;   - Setting file/directory variables (like `org-directory')
+;;   - Setting variables which explicitly tell you to set them before their
+;;     package is loaded (see 'C-h v VARIABLE' to look up their documentation).
+;;   - Setting doom variables (which start with 'doom-' or '+').
+;;
+;; Here are some additional functions/macros that will help you configure Doom.
+;;
+;; - `load!' for loading external *.el files relative to this one
+;; - `use-package!' for configuring packages
+;; - `after!' for running code after a package has loaded
+;; - `add-load-path!' for adding directories to the `load-path', relative to
+;;   this file. Emacs searches the `load-path' when you load packages with
+;;   `require' or `use-package'.
+;; - `map!' for binding new keys
+;;
+;; To get information about any of these functions/macros, move the cursor over
+;; the highlighted symbol at press 'K' (non-evil users must press 'C-c c k').
+;; This will open documentation for it, including demos of how they are used.
+;; Alternatively, use `C-h o' to look up a symbol (functions, variables, faces,
+;; etc).
+;;
+;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
+;; they are implemented.
+;;
+(global-wakatime-mode)
+(setq projectile-project-search-path '("~/external/" "~/internal/" ("~/projects" . 2)))
+(setq evil-snipe-override-evil-repeat-keys nil)
+(setq evil-kill-on-visual-paste nil)
+(setq doom-localleader-key ",")
+
+;; (map! :after evil)
+(map! :after evil
+      :nvm "L" #'evil-end-of-line
+      :nvm "H" #'evil-first-non-blank)
+(map! :after evil :leader :nvm "s n" #'evil-ex-nohighlight)
+
+(after! lsp-ui-sideline (setq lsp-ui-sideline-mode nil
+                              lsp-ui-sideline-show-code-actions t))
+;;   (lsp-inlay-hints-mode))
+
+
+
+;; (setq lsp-inlay-hint-enable t)
+;; (setq-hook! 'lsp-ui-mode-hook
+;;   lsp-ui-sideline-enable nil
+;;   lsp-ui-sideline-mode nil)
+
+;; NOTE: I think this should disable vsync?
+;; (add-to-list 'default-frame-alist '(inhibit-double-buffering . t))
+
+
+(setq fancy-splash-image (concat doom-user-dir "vapor.png"))
+
+(setq +doom-dashboard-name "*dash*")
+(setq wakatime-cli-path "/home/rond/.wakatime/wakatime-cli")
+
+
+(after! elfeed
+  (setq elfeed-feeds '("http://nullprogram.com/feed/"
+                       "http://hnrss.org/frontpage"
+                       "http://hnrss.org/ask"
+                       "http://hnrss.org/show"
+                       "http://archlinux.org/feeds/releases/"
+                       "https://github.com/void-linux/void-packages/commits/master.atom"
+                       "http://xkcd.com/rss.xml"
+                       "http://opensource.com/feed")))
+
+
+(setq user-mail-address "contact@rond.cc")
+(after! mu4e
+  (setq mu4e-get-mail-command "mbsync -c ~/.config/mu4e/.mbsyncrc -a"
+        mu4e-update-interval 60
+        mu4e-search-results-limit 10000))
+
+(when (daemonp)
+  (exec-path-from-shell-initialize))
+
+;;;###autoload
+(defun rond/reload-ewal ()
+  (interactive)
+  (ewal-load-colors)
+  (load-theme 'ewal-spacemacs-modern t))
+
+(rond/reload-ewal)
+;; (use-package! lsp-biome)
+
+;; (setq doom-modeline-buffer-file-name-style 'relative-to-project)
+(setq doom-modeline-major-mode-icon t)
+(setq doom-modeline-hud t)
+
+(setq mini-modeline-hide-mode-line nil)
+
+(setq mini-modeline-r-format
+      '("%e" mode-line-front-space
+        (:eval
+         (string-trim
+          (format-mode-line mode-line-modes)))))
+(setq auth-sources '("~/.authinfo.gpg"))
+
+
+(use-package! org-transclusion
+  :after org
+  :init
+  (map!
+   :map global-map "<f12>" #'org-transclusion-add
+   :leader
+   :prefix "n"
+   :desc "Org Transclusion Mode" "t" #'org-transclusion-mode))
+
+;; (global-nlinum-mode +1)
+
+;; (use-package! org-roam
+;;   :custom
+;;   (org-roam-directory (file-truename "~/org/roam")))
+
+(defun spacemacs/rename-current-buffer-file ()
+  "Renames current buffer and file it is visiting."
+  (interactive)
+  (let* ((name (buffer-name))
+         (filename (buffer-file-name)))
+    (if (not (and filename (file-exists-p filename)))
+        (error "Buffer '%s' is not visiting a file!" name)
+      (let* ((dir (file-name-directory filename))
+             (new-name (read-file-name "New name: " dir)))
+        (cond ((get-buffer new-name)
+               (error "A buffer named '%s' already exists!" new-name))
+              (t
+               (let ((dir (file-name-directory new-name)))
+                 (when (and (not (file-exists-p dir)) (yes-or-no-p (format "Create directory '%s'?" dir)))
+                   (make-directory dir t)))
+               (rename-file filename new-name 1)
+               (rename-buffer new-name)
+               (set-visited-file-name new-name)
+               (set-buffer-modified-p nil)
+               (when (fboundp 'recentf-add-file)
+                 (recentf-add-file new-name)
+                 (recentf-remove-if-non-kept filename))
+               (message "File '%s' successfully renamed to '%s'" name (file-name-nondirectory new-name))))))))
+
+(setq org-log-done 'time)
+(setq org-log-into-drawer "LOGBOOK")
+;; (setq org-log-state-notes-into-drawer t)
+;; (defun rond/org-property-change-note (prop val)
+;;   "Add property changes to the logbook"
+;;   (when (equal prop "Note")
+;;     (org-add-log-setup 'state "%Some unknown previous value%" val     'property)
+;;     )
+;;   )
+;; (add-hook! 'org-after-todo-state-change-hook 'rond/org-property-change-note)
+(setq org-todo-keywords
+      '((sequence "TODO(t!)" "PROJ(p!)" "LOOP(r!)" "STRT(s!)" "WAIT(w!)" "HOLD(h!)" "IDEA(i!)" "|" "DONE(d!)" "KILL(k!)")
+        (sequence "[ ](T!)" "[-](S!)" "[?](W!)" "|" "[X](D!)")
+        (sequence "|" "OKAY(o!)" "YES(y!)" "NO(n!)")))
+
+(load-theme 'doom-laserwave t)

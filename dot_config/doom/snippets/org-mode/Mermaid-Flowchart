@@ -1,0 +1,9 @@
+# key: mermaid-Flow
+# name: Mermaid-Flowchart
+# --
+#+begin_src mermaid :file test.png
+flowchart LR
+    ${0:a}---${1:b}
+    example[title in the box]
+    unicode["This ❤ Unicode"]
+#+end_src

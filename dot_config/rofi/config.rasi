@@ -1,0 +1,14 @@
+configuration {
+	modes: "window,drun,run,ssh,windowcd,combi,keys,filebrowser";
+	combi-modes: "ssh,windowcd,window,run";
+  timeout {
+      action: "kb-cancel";
+      delay:  0;
+  }
+  filebrowser {
+      directories-first: true;
+      sorting-method:    "name";
+  }
+}
+
+@theme "purple"

@@ -1,0 +1,13 @@
+# disables most errors
+--no-messages
+
+--trim
+
+#--lines
+
+#--pretty
+
+# usually good, might remove in future
+--hidden
+# capitalization stuff
+--smart-case

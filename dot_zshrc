@@ -94,3 +94,6 @@ compinit
 [[ ! -r '/home/rond/.opam/opam-init/init.zsh' ]] || source '/home/rond/.opam/opam-init/init.zsh' > /dev/null 2> /dev/null
 # END opam configuration
 . "/home/rond/.deno/env"
+eval "$(mise activate zsh)"
+eval "$(direnv hook zsh)"
+eval "$(starship init zsh)"

@@ -53,7 +53,7 @@ export EDITOR='emacsclient -n'
 #-----
 n () # to cd on quit
 {
-    if [ -n "$NNNLVL" ] && [ "${NNNLVL:-0}" -ge 1 ]; then
+    if [ -n $NNNLVL ] && [ "${NNNLVL:-0}" -ge 1 ]; then
         echo "nnn is already running"
         return
     fi

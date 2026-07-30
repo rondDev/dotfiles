@@ -17,14 +17,16 @@ hl.bind(shiftMod .. " + Q", hl.dsp.window.kill())
 hl.bind(shiftMod .. " + M", hl.dsp.exit())
 hl.bind(mainMod .. " + V", hl.dsp.window.float())
 hl.bind(mainMod .. " + SHIFT + V", hl.dsp.exec_cmd("cliphist list | " .. launcher .. "| cliphist decode | wl-copy"))
--- hl.bind(mainMod .. " + D", hl.dsp.exec_cmd(menu))
-hl.bind(mainMod .. " + D", function()
-  if hl.get_windows({ class = "otter" })[1] ~= nil then
-    hl.dispatch(hl.dsp.focus({ window = "class:otter" }))
-  else
-    hl.exec_cmd("kitty --class otter --title otter-launcher -e sh -c 'sleep 0.05 && otter-launcher'")
-  end
-end)
+hl.bind(mainMod .. " + D", hl.dsp.exec_cmd(menu))
+
+-- hl.bind(mainMod .. " + D", function()
+--   if hl.get_windows({ class = "otter" })[1] ~= nil then
+--     hl.dispatch(hl.dsp.focus({ window = "class:otter" }))
+--   else
+--     hl.exec_cmd("kitty --class otter --title otter-launcher -e sh -c 'sleep 0.05 && otter-launcher'")
+--   end
+-- end)
+
 hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
 
 hl.bind(mainMod .. " + SPACE", hl.dsp.window.fullscreen())

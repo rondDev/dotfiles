@@ -18,11 +18,12 @@
 $env.config.show_banner = false
 $env.TMUX_POWERLINE_THEME = "my-theme"
 $env.PATH = ($env.PATH | split row (char esep) | append [
+  "~/bin"
+  "/home/rond/.local/bin"
   "/nix/var/nix/profiles/default/bin"
-  "~/.nimble/bin"
   "~/.nix-profile/bin"
   "~/.local/share/bob/nvim-bin"
-  "~/.local/share/gem/ruby/3.2.0/bin"
+  "~/.local/share/gem/ruby/3.4.0/bin"
   "~/.tmuxifier/bin"
   "~/.bun/bin"
   "~/.cargo/bin"
@@ -62,6 +63,47 @@ let zoxide_completer = {|spans|
 let tldr_completer = {|spans|
  $spans | skip 1 | tldr -l ...$in | lines | where {|x| $x =~ $spans.1}
 }
+# Define a custom completer function that pipes into television
+let tv_completer = {|spans|
+    # Convert command line arguments to a single string
+    let query = ($spans | str join " ")
+    
+    # Run television using its standard input/smart channel mode
+    # Adjust flags based on your preference (e.g., --preview if supported)
+    let selected = (echo $query | tv --autocomplete-mode | decode utf-8 | str trim)
+    
+    if ($selected | is-empty) {
+        []
+    } else {
+        [$selected]
+    }
+}
+
+let television_global_completer = {|spans|
+    # 1. Grab the last typed word fragment to prime Television's interactive query
+    let last_word = ($spans | last | str trim)
+    
+    # 2. Invoke the true internal autocomplete engine via the commandline module
+    # 3. Extract the clean 'value' column from Nushell's completion records
+    let raw_options = (commandline complete | get value | str join "\n")
+
+    # Exit gracefully if Nushell has no suggestions for the current string
+    if ($raw_options | is-empty) {
+        return []
+    }
+
+    # 4. Use 'encode utf-8' to output a raw binary byte stream into Television
+    let selection = ($raw_options | encode utf-8 | tv --passthrough --query $last_word | decode utf-8 | str trim)
+
+    if ($selection | is-empty) {
+        []
+    } else {
+        [$selection]
+    }
+}
+
+
+
 
 # This completer will use carapace by default
 let external_completer = {|spans|
@@ -69,13 +111,13 @@ let external_completer = {|spans|
   | where name == $spans.0
   | get -o 0.expansion
 
-  let spans = if $expanded_alias != null {
-    $spans
-    | skip 1
-    | prepend ($expanded_alias | split row ' ' | take 1)
-  } else {
-    $spans
-  }
+#   let spans = if $expanded_alias != null {
+#     $spans
+#     | skip 1
+#     | prepend ($expanded_alias | split row ' ' | take 1)
+#   } else {
+#     $spans
+#   }
 
   match $spans.0 {
     # carapace completions are incorrect for nu
@@ -113,12 +155,55 @@ $env.config = {
         cmd: $"source '($nu.env-path)';source '($nu.config-path)'; echo 'reloaded'"
       }
     },
+    # {
+    #   name: completion_menu
+    #   modifier: control
+    #   keycode: char_t
+    #   mode: emacs
+    #   event: { send: menu name: completion_menu }
+    # },
+    # {
+    #   name: tv_autocomplete
+    #   modifier: none
+    #   keycode: tab
+    #   mode: [emacs, vi_normal, vi_insert]
+    #   event: {
+    #   send: executehostcommand
+    #   cmd: "commandline edit --insert (tv autocomplete (commandline))"
+    #         }
+    # },
     {
-      name: completion_menu
+      name: fzf_history
       modifier: control
-      keycode: char_t
-      mode: emacs
-      event: { send: menu name: completion_menu }
+      keycode: char_r
+      mode: [emacs, vi_insert, vi_normal]
+      event: [
+        {
+          send: ExecuteHostCommand
+          # Fetches unique history items, feeds them to fzf, and inserts the choice
+          cmd: "commandline edit --insert (history | each { get command } | uniq | reverse | str join (char nl) | fzf | str trim)"
+        }
+      ]
+    },
+    # {
+    #     name: tv_tab_completion
+    #     modifier: none
+    #     keycode: tab
+    #     mode: [emacs, vi_normal, vi_insert]
+    #     event: { send: executehostcommand, cmd: "commandline complete" }
+    # }
+{
+        name: completion_menu
+        modifier: none
+        keycode: tab
+        mode: [emacs, vi_insert]
+        event: {
+            # Tells Nushell to cleanly open the completion menu using our external fzf definition
+            until: [
+                { send: menu name: completion_menu }
+                { send: menunext }
+            ]
+        }
     }
   ]
   hooks: {
@@ -135,27 +220,33 @@ $env.config = {
   }
   completions: {
     use_ls_colors: true
+    case_sensitive: false
+    quick: true
+    partial: true
+    algorithm: "fuzzy" # Matches the fuzzy search logic of fzf
     external: {
-      enable: true
-      completer: $external_completer
-    }
+        enable: true
+        # Emulates fzf-tab fallback using your native carapace tool
+        completer: $external_completer
+        }
   }
-menus: [
-    {
-      name: completion_menu
-      only_buffer_difference: false
-      marker: "| "
-      type: {
-        layout: columnar # or "description" to see descriptions on the right
-        columns: 4
-        col_width: 20
-        col_padding: 2
-      }
-      style: {
-        text: green
-        selected_text: cyan
-        description_text: blue
-      }
-    }
-  ]
 }
+
+devenv hook nu | save --force ~/.cache/devenv/hook.nu
+source ~/.cache/devenv/hook.nu
+
+mkdir ($nu.data-dir | path join "vendor/autoload")
+starship init nu | save -f ($nu.data-dir | path join "vendor/autoload/starship.nu")
+
+mkdir ($nu.data-dir | path join "vendor/autoload")
+tv init nu | save -f ($nu.data-dir | path join "vendor/autoload/tv.nu")
+
+
+$env.CARAPACE_BRIDGES = 'zsh,fish,bash,inshellisense' # optional
+mkdir $"($nu.cache-dir)"
+carapace _carapace nushell | save --force $"($nu.cache-dir)/carapace.nu"
+source $"($nu.cache-dir)/carapace.nu"
+
+source $"($nu.default-config-dir)/aliases.nu"
+
+overlay use ~/.config/nushell/extra/alias-finder.nu

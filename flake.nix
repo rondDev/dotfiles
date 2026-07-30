@@ -17,6 +17,7 @@
     };
     emacs-overlay.url = "github:nix-community/emacs-overlay";
     fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
+    television.url = "github:alexpasmantier/television";
   };
 
   outputs =
@@ -45,6 +46,11 @@
 
         # Optionally use extraSpecialArgs
         # to pass through arguments to home.nix
+
+        extraSpecialArgs = {
+          inherit inputs;
+          sys = pkgs.stdenv.hostPlatform.system;
+        };
       };
     };
 }

@@ -1,8 +1,10 @@
 # { inputs, lib, config, pkgs, ... }:
 {
+  inputs,
   config,
   lib,
   pkgs,
+  sys,
   ...
 }:
 
@@ -29,6 +31,7 @@ in
     ./modules/git.nix
     # ./modules/cachix.nix
     ./modules/direnv.nix
+    # ./modules/television.nix
     # ./modules/emacs
   ];
 
@@ -62,36 +65,41 @@ in
     # The home.packages option allows you to install Nix packages into your
     # environment.
 
-    packages = with pkgs; [
-      carapace
-      direnv
-      fastfetch
-      fd
-      fh
-      glibcLocales
-      # spotify
-      tofi
-      # (nerdfonts.override { fonts = [ "FantasqueSansMono" ]; })
-      # nerd-fonts.fantasque-sans-mono
-      # nerdfonts
-      nixd
-      nixfmt-rfc-style
-      nnn
-      # swift
-      sqlite
+    packages =
+      (with pkgs; [
+        carapace
+        direnv
+        fastfetch
+        fd
+        fh
+        forgejo-cli
+        glibcLocales
+        # spotify
+        tofi
+        # (nerdfonts.override { fonts = [ "FantasqueSansMono" ]; })
+        # nerd-fonts.fantasque-sans-mono
+        # nerdfonts
+        nixd
+        nixfmt
+        nnn
+        # swift
+        sqlite
 
-      # It is sometimes useful to fine-tune packages, for example, by applying
-      # # overrides. You can do that directly here, just don't forget the
-      # # parentheses. Maybe you want to install Nerd Fonts with a limited number of
-      # # fonts?
+        # It is sometimes useful to fine-tune packages, for example, by applying
+        # # overrides. You can do that directly here, just don't forget the
+        # # parentheses. Maybe you want to install Nerd Fonts with a limited number of
+        # # fonts?
 
-      # # You can also create simple shell scripts directly inside your
-      # # configuration. For example, this adds a command 'my-hello' to your
-      # # environment:
-      # (pkgs.writeShellScriptBin "my-hello" ''
-      #   echo "Hello, ${config.home.username}!"
-      # '')
-    ];
+        # # You can also create simple shell scripts directly inside your
+        # # configuration. For example, this adds a command 'my-hello' to your
+        # # environment:
+        # (pkgs.writeShellScriptBin "my-hello" ''
+        #   echo "Hello, ${config.home.username}!"
+        # '')
+      ])
+      ++ [
+        inputs.television.packages.${sys}.default
+      ];
 
     # Home Manager is pretty good at managing dotfiles. The primary way to manage
     # plain files is through 'home.file'.
@@ -106,7 +114,8 @@ in
       #   org.gradle.console=verbose
       #   org.gradle.daemon.idletimeout=3600000
       # '';
-    } // dotfileSymlinks;
+    }
+    // dotfileSymlinks;
 
     # Home Manager can also manage your environment variables through
     # 'home.sessionVariables'. These will be explicitly sourced when using a

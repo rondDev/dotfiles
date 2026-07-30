@@ -1,0 +1,6 @@
+[tools]
+bun = "latest"
+deno = "latest"
+elixir = "latest"
+erlang = "latest"
+node = "latest"

@@ -1,2 +1,4 @@
 history.txt
 __pycache__
+.zcompdump*
+.zsh_history

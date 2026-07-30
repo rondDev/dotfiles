@@ -137,6 +137,7 @@ in
       LOCALE_ARCHIVE = "${pkgs.glibcLocales}/lib/locale/locale-archive";
       NATIVE_FULL_AOT = "true";
       NIXOS_OZONE_WL = "1";
+      ZDOTDIR = "~/.config/zsh";
     };
   };
 

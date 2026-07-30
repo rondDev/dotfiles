@@ -17,6 +17,7 @@
 
 $env.config.show_banner = false
 $env.TMUX_POWERLINE_THEME = "my-theme"
+$env.ZDOTDIR = $"($env.HOME)/.config/zsh"
 $env.PATH = ($env.PATH | split row (char esep) | append [
   "~/bin"
   "/home/rond/.local/bin"

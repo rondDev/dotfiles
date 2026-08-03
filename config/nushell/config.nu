@@ -249,5 +249,8 @@ carapace _carapace nushell | save --force $"($nu.cache-dir)/carapace.nu"
 source $"($nu.cache-dir)/carapace.nu"
 
 source $"($nu.default-config-dir)/aliases.nu"
+source $"($nu.default-config-dir)/extra/sdkman.nu"
+source $"($nu.default-config-dir)/extra/zoxide.nu"
+
 
 overlay use ~/.config/nushell/extra/alias-finder.nu

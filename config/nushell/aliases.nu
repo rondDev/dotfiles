@@ -2,6 +2,8 @@ alias hms = home-manager switch
 alias la = ls -a
 alias lla = ls -la
 
+alias fg = job unfreeze
+
 alias c = cd ~/code
 alias cf = cd ~/.config
 

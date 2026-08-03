@@ -61,7 +61,7 @@ keybind = ctrl+shift+v=paste_from_clipboard
 # palette = 7=#a89984
 # palette = 15=#fbf1c7
 
-# command = nu
+command = nu
 
 #====commands
 # reset - reset terminal (ie on applications breaking stateful kitty protocol)

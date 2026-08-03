@@ -11,24 +11,21 @@
     settings = {
       user.name = "rondDev";
       user.email = "contact@rond.cc";
-      aliases = {
+      alias = {
         co = "checkout";
-        f = "ls-files | rg -i";
       };
-      extraConfig = {
-        github.user = "rondDev";
-        gpg = {
-          format = "ssh";
-        };
-        commit.gpgsign = true;
-        init = {
-          defaultBranch = "dev";
-        };
-        push = {
-          autoSetupRemote = true;
-        };
-        user.signingkey = "~/.ssh/id_ed25519.pub";
+      github.user = "rondDev";
+      gpg = {
+        format = "ssh";
       };
+      commit.gpgsign = true;
+      init = {
+        defaultBranch = "dev";
+      };
+      push = {
+        autoSetupRemote = true;
+      };
+      user.signingkey = "~/.ssh/id_ed25519.pub";
     };
     ignores = [
       "rust_out"

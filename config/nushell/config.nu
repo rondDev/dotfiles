@@ -33,7 +33,8 @@ $env.PATH = ($env.PATH | split row (char esep) | append [
   "~/.config/tmux/plugins/t-smart-tmux-session-manager/bin"
   "~/.local/share/mise/shims/"
 ])
-$env.RIPGREP_CONFIG_PATH = "~/.config/ripgrep/ripgreprc"
+$env.RIPGREP_CONFIG_PATH = $"($env.HOME)/.config/ripgrep/ripgreprc"
+$env.EDITOR = "emacsclient"
 
 
 let carapace_completer = {|spans|

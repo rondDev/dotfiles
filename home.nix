@@ -33,6 +33,8 @@ in
     ./modules/direnv.nix
     # ./modules/television.nix
     # ./modules/emacs
+    ./modules/zellij.nix
+    ./modules/zsh.nix
   ];
 
   nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [ "spotify" ];

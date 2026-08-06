@@ -69,11 +69,11 @@ let tldr_completer = {|spans|
 let tv_completer = {|spans|
     # Convert command line arguments to a single string
     let query = ($spans | str join " ")
-    
+
     # Run television using its standard input/smart channel mode
     # Adjust flags based on your preference (e.g., --preview if supported)
     let selected = (echo $query | tv --autocomplete-mode | decode utf-8 | str trim)
-    
+
     if ($selected | is-empty) {
         []
     } else {
@@ -84,7 +84,7 @@ let tv_completer = {|spans|
 let television_global_completer = {|spans|
     # 1. Grab the last typed word fragment to prime Television's interactive query
     let last_word = ($spans | last | str trim)
-    
+
     # 2. Invoke the true internal autocomplete engine via the commandline module
     # 3. Extract the clean 'value' column from Nushell's completion records
     let raw_options = (commandline complete | get value | str join "\n")
@@ -145,7 +145,7 @@ const NU_PLUGIN_DIRS = [
 $env.LS_COLORS = "di=1;34:*.nu=3;33;26"
 
 $env.config = {
-  # edit_mode: 'vi'
+  edit_mode: 'vi'
   keybindings: [
     {
       name: reload_config

@@ -34,10 +34,8 @@
       fonts = {
         packages = builtins.filter pkgs.lib.isDerivation (builtins.attrValues pkgs.nerd-fonts);
       };
-    in
-    {
 
-      homeConfigurations."rond" = home-manager.lib.homeManagerConfiguration {
+      mkHome = hostname: home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
 
         # Specify your home configuration modules here, for example,
@@ -48,9 +46,15 @@
         # to pass through arguments to home.nix
 
         extraSpecialArgs = {
-          inherit inputs;
+          inherit inputs hostname;
           sys = pkgs.stdenv.hostPlatform.system;
         };
+      };
+    in
+    {
+      homeConfigurations = {
+        "rond" = mkHome "default";
+        "rond@penthus" = mkHome "penthus";
       };
     };
 }

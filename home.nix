@@ -5,25 +5,34 @@
   lib,
   pkgs,
   sys,
+  hostname,
   ...
 }:
 
 let
   # 1. Define the absolute path to your repo's config folder
   repoConfigPath = "${config.home.homeDirectory}/.config/home-manager/config";
+  hostConfigPath = "${config.home.homeDirectory}/.config/home-manager/hosts/${hostname}/config";
 
   # 2. Read the directory to get a list of all files/folders inside it
   configDirs = builtins.attrNames (builtins.readDir ./config);
 
-  # 3. Generate a Nix attribute set mapping target paths to out-of-store symlinks
-  dotfileSymlinks = builtins.listToAttrs (
-    map (name: {
-      name = ".config/${name}";
-      value = {
-        source = config.lib.file.mkOutOfStoreSymlink "${repoConfigPath}/${name}";
-      };
-    }) configDirs
-  );
+  hostConfigDir = ./hosts + "/${hostname}/config";
+  hostDirs =
+    if builtins.pathExists hostConfigDir
+    then builtins.attrNames (builtins.readDir hostConfigDir)
+    else [];
+
+  mkLink = base: name: {
+    name = ".config/${name}";
+    value.source = config.lib.file.mkOutOfStoreSymlink "${base}/${name}";
+  };
+
+
+  baseSymlinks = builtins.listToAttrs (map (mkLink repoConfigPath) configDirs);
+  hostSymlinks = builtins.listToAttrs (map (mkLink hostConfigPath) hostDirs);
+
+  dotfileSymlinks = baseSymlinks // hostSymlinks;
 in
 {
   imports = [
@@ -40,14 +49,14 @@ in
   nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [ "spotify" ];
 
   nixpkgs.overlays = [
-    (import (
-      builtins.fetchGit {
-        url = "https://github.com/nix-community/emacs-overlay.git";
-        ref = "master";
-        # rev = "550cfdf5570aa09457a9e4f3c878cee535e1d7e2"; # change the revision
-        rev = "9df047f0cd70ac7a2c0fa4750394f07677ca3860"; # change the revision
-      }
-    ))
+    # (import (
+    #   builtins.fetchGit {
+    #     url = "https://github.com/nix-community/emacs-overlay.git";
+    #     ref = "master";
+    #     # rev = "550cfdf5570aa09457a9e4f3c878cee535e1d7e2"; # change the revision
+    #     rev = "9df047f0cd70ac7a2c0fa4750394f07677ca3860"; # change the revision
+    #   }
+    # ))
   ];
   home = {
     # Home Manager needs a bit of information about you and the paths it should
